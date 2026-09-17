@@ -1,4 +1,0 @@
-# Member A: inherits the root lint policy; change shared lint rules in the root file.
-
-# Explains: Inherit lint rules from the referenced shared configuration.
-include: ../analysis_options.yaml
