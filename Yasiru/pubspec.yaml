@@ -1,0 +1,48 @@
+# Member A: dependencies used directly by this package.
+# resolution: workspace shares root dependency resolution and pubspec.lock.
+# After dependency or directory-name changes, run flutter pub get from the project root.
+
+# Explains: Name this Dart package for package imports and dependency resolution.
+name: linkworks_auth
+# Explains: Describe the package responsibility to tooling and developers.
+description: Shared LinkWorks code owned by member_a_auth.
+# Explains: Prevent accidental publication of this private project to pub.dev.
+publish_to: none
+# Explains: Set the package/app version; the root + suffix is the Android build number.
+version: 0.1.0
+# Explains: Declare toolchain compatibility requirements for this package.
+environment:
+  # Explains: Select the Dart version constraint or SDK-provided dependency.
+  sdk: ^3.13.2
+# Explains: Participate in the root Dart workspace rather than generating an independent lockfile.
+resolution: workspace
+# Explains: Declare packages required by this package at runtime.
+dependencies:
+  # Explains: Declare the package used to implement Firebase sign-in; the version constraint must remain compatible across the workspace.
+  firebase_auth: ^6.6.1
+  # Explains: Declare the package used to upload profile/job/chat media when billing and rules are configured; the version constraint must remain compatible across the workspace.
+  firebase_storage: ^13.5.0
+  # Explains: Configure Flutter itself or select the Flutter SDK dependency.
+  flutter:
+    # Explains: Select the Dart version constraint or SDK-provided dependency.
+    sdk: flutter
+  # Explains: Declare the package used to manage observable app/feature state; the version constraint must remain compatible across the workspace.
+  flutter_riverpod: ^3.4.3
+  # Explains: Declare the package used to select/capture photos; the version constraint must remain compatible across the workspace.
+  image_picker: ^1.2.3
+  # Explains: Declare this internal LinkWorks package; the following path points to the owner folder.
+  linkworks_common:
+    # Explains: Resolve this dependency from the specified local folder; update it after folder renames.
+    path: ../common
+  # Explains: Declare the package used to store non-sensitive local preferences; the version constraint must remain compatible across the workspace.
+  shared_preferences: ^2.5.5
+
+# Explains: Declare packages needed only for development, generation, or tests.
+dev_dependencies:
+  # Explains: Use the Flutter unit/widget test framework.
+  flutter_test:
+    # Explains: Select the Dart version constraint or SDK-provided dependency.
+    sdk: flutter
+  # Explains: Apply the shared Flutter/Dart analysis rules.
+  flutter_lints: ^6.0.0
+

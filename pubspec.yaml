@@ -21,7 +21,7 @@ workspace:
   # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
   - common
   # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
-  - member_a_auth
+  - Yasiru
   # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
   - member_b_discovery
   # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
@@ -43,7 +43,7 @@ dependencies:
   # Explains: Declare this internal LinkWorks package; the following path points to the owner folder.
   linkworks_auth:
     # Explains: Resolve this dependency from the specified local folder; update it after folder renames.
-    path: member_a_auth
+    path: Yasiru
   # Explains: Declare this internal LinkWorks package; the following path points to the owner folder.
   linkworks_discovery:
     # Explains: Resolve this dependency from the specified local folder; update it after folder renames.
