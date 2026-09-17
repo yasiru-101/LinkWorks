@@ -1,0 +1,25 @@
+# Explains: Exclude paths matching gradle-wrapper.jar from new Git additions; existing tracked files would require separate untracking.
+gradle-wrapper.jar
+# Explains: Exclude paths matching /.gradle from new Git additions; existing tracked files would require separate untracking.
+/.gradle
+# Explains: Exclude paths matching /captures/ from new Git additions; existing tracked files would require separate untracking.
+/captures/
+# Explains: Exclude paths matching /gradlew from new Git additions; existing tracked files would require separate untracking.
+/gradlew
+# Explains: Exclude paths matching /gradlew.bat from new Git additions; existing tracked files would require separate untracking.
+/gradlew.bat
+# Explains: Exclude paths matching /local.properties from new Git additions; existing tracked files would require separate untracking.
+/local.properties
+# Explains: Exclude paths matching GeneratedPluginRegistrant.java from new Git additions; existing tracked files would require separate untracking.
+GeneratedPluginRegistrant.java
+# Explains: Exclude paths matching .cxx/ from new Git additions; existing tracked files would require separate untracking.
+.cxx/
+
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/to/reference-keystore
+# Explains: Exclude paths matching key.properties from new Git additions; existing tracked files would require separate untracking.
+key.properties
+# Explains: Exclude paths matching **/*.keystore from new Git additions; existing tracked files would require separate untracking.
+**/*.keystore
+# Explains: Exclude paths matching **/*.jks from new Git additions; existing tracked files would require separate untracking.
+**/*.jks

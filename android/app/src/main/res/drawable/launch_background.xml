@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flutter-generated Android platform resource. -->
+<!-- Edit only for native launch appearance or build-specific Android settings; app screens live in Dart member folders. -->
+<!-- Modify this file to customize your launch splash screen -->
+<!-- Explains: Stack drawable layers to form the native launch background. xmlns:android: Declare the standard Android XML attribute namespace. Value: http://schemas.android.com/apk/res/android. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Explains: Set this resource/theme property to the displayed value/reference. android:drawable: Reference the drawable or color painted by this launch layer. Value: @android:color/white. -->
+<item android:drawable="@android:color/white" />
+
+    <!-- You can insert your own image assets here -->
+    <!-- <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@mipmap/launch_image" />
+    </item> -->
+<!-- Explains: Close the layer-list element and return to its containing configuration. --></layer-list>

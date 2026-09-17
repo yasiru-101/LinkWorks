@@ -1,0 +1,62 @@
+# Keep planning documents local until the final project documentation is ready.
+# These patterns match README files in the root and in every member folder.
+# Explains: Exclude paths matching **/[Rr][Ee][Aa][Dd][Mm][Ee] from new Git additions; existing tracked files would require separate untracking.
+**/[Rr][Ee][Aa][Dd][Mm][Ee]
+# Explains: Exclude paths matching **/[Rr][Ee][Aa][Dd][Mm][Ee].* from new Git additions; existing tracked files would require separate untracking.
+**/[Rr][Ee][Aa][Dd][Mm][Ee].*
+# Explains: Keep per-file README explanation notes local until final documentation is requested.
+**/[Rr][Ee][Aa][Dd][Mm][Ee]_*
+# Explains: Exclude paths matching /Implementation_Plan.md from new Git additions; existing tracked files would require separate untracking.
+/Implementation_Plan.md
+# Explains: Exclude paths matching /LinkWorks_Project_Plan.docx from new Git additions; existing tracked files would require separate untracking.
+/LinkWorks_Project_Plan.docx
+
+# Flutter / Dart generated files
+# Explains: Exclude paths matching **/.dart_tool/ from new Git additions; existing tracked files would require separate untracking.
+**/.dart_tool/
+# Explains: Exclude paths matching **/build/ from new Git additions; existing tracked files would require separate untracking.
+**/build/
+# Explains: Exclude paths matching **/.flutter-plugins from new Git additions; existing tracked files would require separate untracking.
+**/.flutter-plugins
+# Explains: Exclude paths matching **/.flutter-plugins-dependencies from new Git additions; existing tracked files would require separate untracking.
+**/.flutter-plugins-dependencies
+# Explains: Exclude paths matching **/android/local.properties from new Git additions; existing tracked files would require separate untracking.
+**/android/local.properties
+
+# Node and Firebase local artifacts
+# Explains: Exclude paths matching **/node_modules/ from new Git additions; existing tracked files would require separate untracking.
+**/node_modules/
+# Explains: Exclude paths matching .firebase/ from new Git additions; existing tracked files would require separate untracking.
+.firebase/
+# Explains: Exclude paths matching *-debug.log from new Git additions; existing tracked files would require separate untracking.
+*-debug.log
+# Explains: Exclude paths matching *-debug.*.log from new Git additions; existing tracked files would require separate untracking.
+*-debug.*.log
+
+# Local credentials and environment files
+# Explains: Exclude paths matching .env from new Git additions; existing tracked files would require separate untracking.
+.env
+# Explains: Exclude paths matching .env.* from new Git additions; existing tracked files would require separate untracking.
+.env.*
+# Explains: Exclude paths matching !.env.example from new Git additions; existing tracked files would require separate untracking.
+!.env.example
+# Explains: Exclude paths matching **/*service-account*.json from new Git additions; existing tracked files would require separate untracking.
+**/*service-account*.json
+# Explains: Exclude paths matching **/*serviceAccount*.json from new Git additions; existing tracked files would require separate untracking.
+**/*serviceAccount*.json
+# Explains: Exclude paths matching **/*.jks from new Git additions; existing tracked files would require separate untracking.
+**/*.jks
+# Explains: Exclude paths matching **/*.keystore from new Git additions; existing tracked files would require separate untracking.
+**/*.keystore
+# Explains: Exclude paths matching **/key.properties from new Git additions; existing tracked files would require separate untracking.
+**/key.properties
+
+# Local editor state
+# Explains: Exclude paths matching .idea/ from new Git additions; existing tracked files would require separate untracking.
+.idea/
+# Explains: Exclude paths matching *.iml from new Git additions; existing tracked files would require separate untracking.
+*.iml
+
+# Python development-tool caches are local build artifacts.
+**/__pycache__/
+*.pyc

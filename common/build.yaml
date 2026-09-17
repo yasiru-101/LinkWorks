@@ -1,0 +1,16 @@
+# Shared code-generation settings for common/lib/src/models/models.dart.
+# explicit_to_json serializes nested models as maps suitable for Firestore writes.
+# Change generation options here; regenerate output instead of editing generated Dart files.
+
+# Explains: Configure build_runner generation targets for this package.
+targets:
+  # Explains: Apply the following settings to the default package build target.
+  $default:
+    # Explains: Configure the generators that produce model support files.
+    builders:
+      # Explains: Declare the package used to generate serialization functions; the version constraint must remain compatible across the workspace.
+      json_serializable:
+        # Explains: Supply generator settings shared by serialized model classes.
+        options:
+          # Explains: Serialize nested model objects as maps instead of leaving raw Dart objects in Firestore data.
+          explicit_to_json: true

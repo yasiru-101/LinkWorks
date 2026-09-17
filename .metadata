@@ -1,0 +1,45 @@
+# This file tracks properties of this Flutter project.
+# Used by Flutter tool to assess capabilities and perform upgrades etc.
+#
+# This file should be version controlled and should not be manually edited.
+
+# Explains: Set the package/app version; the root + suffix is the Android build number.
+version:
+  # Explains: Set this tool metadata/configuration entry for the enclosing section; it does not implement application behavior.
+  revision: "d3b14c876900e553bc736ca19295fc09e3853e8e"
+  # Explains: Set this tool metadata/configuration entry for the enclosing section; it does not implement application behavior.
+  channel: "stable"
+
+# Explains: Set this tool metadata/configuration entry for the enclosing section; it does not implement application behavior.
+project_type: app
+
+# Tracks metadata for the flutter migrate command
+# Explains: Set this tool metadata/configuration entry for the enclosing section; it does not implement application behavior.
+migration:
+  # Explains: Set this tool metadata/configuration entry for the enclosing section; it does not implement application behavior.
+  platforms:
+    # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
+    - platform: root
+      # Explains: Set this tool metadata/configuration entry for the enclosing section; it does not implement application behavior.
+      create_revision: d3b14c876900e553bc736ca19295fc09e3853e8e
+      # Explains: Set this tool metadata/configuration entry for the enclosing section; it does not implement application behavior.
+      base_revision: d3b14c876900e553bc736ca19295fc09e3853e8e
+    # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
+    - platform: android
+      # Explains: Set this tool metadata/configuration entry for the enclosing section; it does not implement application behavior.
+      create_revision: d3b14c876900e553bc736ca19295fc09e3853e8e
+      # Explains: Set this tool metadata/configuration entry for the enclosing section; it does not implement application behavior.
+      base_revision: d3b14c876900e553bc736ca19295fc09e3853e8e
+
+  # User provided section
+
+  # List of Local paths (relative to this file) that should be
+  # ignored by the migrate tool.
+  #
+  # Files that are not part of the templates will be ignored by default.
+  # Explains: Set this tool metadata/configuration entry for the enclosing section; it does not implement application behavior.
+  unmanaged_files:
+    # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
+    - 'lib/main.dart'
+    # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
+    - 'ios/Runner.xcodeproj/project.pbxproj'

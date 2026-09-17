@@ -1,0 +1,62 @@
+<!-- Shared Android app identity, launcher activity, and permissions. -->
+<!-- Add Android permissions here when their feature and runtime permission handling are implemented. -->
+<!-- LinkWorks is the launcher label. Firebase identifiers are configured separately. -->
+<!-- Explains: Declare the Android manifest and namespace for application metadata. xmlns:android: Declare the standard Android XML attribute namespace. Value: http://schemas.android.com/apk/res/android. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Explains: Request the named platform permission at installation; runtime permission flow is separate when required. android:name: Identify the permission, component, metadata key, or intent action. Value: android.permission.INTERNET. -->
+<uses-permission android:name="android.permission.INTERNET" />
+    <!-- Explains: Configure the Android application label, startup class, and launcher icon. android:label: Set the launcher/application display name to LinkWorks. Value: LinkWorks. android:name: Identify the permission, component, metadata key, or intent action. Value: ${applicationName}. android:icon: Reference the Android launcher icon resource. Value: @mipmap/ic_launcher. -->
+<application
+        android:label="LinkWorks"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+        <!-- Explains: Configure the Flutter host activity and how Android launches/resizes/restores it. android:name: Identify the permission, component, metadata key, or intent action. Value: .MainActivity. android:exported: Allow Android to launch this activity from outside the app. Value: true. android:launchMode: Reuse the top activity instance for matching launches. Value: singleTop. android:taskAffinity: Use the configured task affinity when Android groups activities. Value: . android:theme: Choose the native launch theme while Flutter initializes. Value: @style/LaunchTheme. android:configChanges: Let Flutter handle the listed configuration changes without recreating this activity. Value: orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode. android:hardwareAccelerated: Enable GPU acceleration for this activity. Value: true. android:windowSoftInputMode: Resize available content when the software keyboard opens. Value: adjustResize. -->
+<activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <!-- Explains: Supply the named Android/Flutter runtime configuration value. android:name: Identify the permission, component, metadata key, or intent action. Value: io.flutter.embedding.android.NormalTheme. android:resource: Point this metadata entry at a native resource. Value: @style/NormalTheme. -->
+<meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <!-- Explains: Group the Android intents this activity can handle. -->
+<intent-filter>
+                <!-- Explains: Declare the Android action handled or queried by this intent. android:name: Identify the permission, component, metadata key, or intent action. Value: android.intent.action.MAIN. -->
+<action android:name="android.intent.action.MAIN"/>
+                <!-- Explains: Declare the launcher/category classification used by Android intent matching. android:name: Identify the permission, component, metadata key, or intent action. Value: android.intent.category.LAUNCHER. -->
+<category android:name="android.intent.category.LAUNCHER"/>
+            <!-- Explains: Close the intent-filter element and return to its containing configuration. --></intent-filter>
+        <!-- Explains: Close the activity element and return to its containing configuration. --></activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <!-- Explains: Supply the named Android/Flutter runtime configuration value. android:name: Identify the permission, component, metadata key, or intent action. Value: flutterEmbedding. android:value: Provide the literal metadata value expected by Flutter/Android. Value: 2. -->
+<meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    <!-- Explains: Close the application element and return to its containing configuration. --></application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <!-- Explains: List external intent capabilities the application is allowed to discover. -->
+<queries>
+        <!-- Explains: Describe an external intent whose handlers Android may reveal to the app. -->
+<intent>
+            <!-- Explains: Declare the Android action handled or queried by this intent. android:name: Identify the permission, component, metadata key, or intent action. Value: android.intent.action.PROCESS_TEXT. -->
+<action android:name="android.intent.action.PROCESS_TEXT"/>
+            <!-- Explains: Specify the MIME type used when matching the external intent. android:mimeType: Match external handlers for plain-text processing. Value: text/plain. -->
+<data android:mimeType="text/plain"/>
+        <!-- Explains: Close the intent element and return to its containing configuration. --></intent>
+    <!-- Explains: Close the queries element and return to its containing configuration. --></queries>
+<!-- Explains: Close the manifest element and return to its containing configuration. --></manifest>

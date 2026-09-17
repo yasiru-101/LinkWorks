@@ -1,0 +1,84 @@
+# Shared Flutter application and workspace dependency configuration.
+# workspace lists the common package and the five member-owned packages.
+# If a member directory is renamed, update its workspace entry and all affected path dependencies.
+# Dependencies used directly by a member must also be declared in that member pubspec.
+# Run flutter pub get at the root after changing dependencies; commit the shared pubspec.lock.
+
+# Explains: Name this Dart package for package imports and dependency resolution.
+name: linkworks
+# Explains: Describe the package responsibility to tooling and developers.
+description: A local marketplace connecting clients with skilled workers.
+# Explains: Prevent accidental publication of this private project to pub.dev.
+publish_to: none
+# Explains: Set the package/app version; the root + suffix is the Android build number.
+version: 0.1.0+1
+# Explains: Declare toolchain compatibility requirements for this package.
+environment:
+  # Explains: Select the Dart version constraint or SDK-provided dependency.
+  sdk: ^3.13.2
+# Explains: List local packages sharing one root dependency resolution.
+workspace:
+  # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
+  - common
+  # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
+  - member_a_auth
+  # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
+  - member_b_discovery
+  # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
+  - member_c_jobs
+  # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
+  - member_d_communication
+  # Explains: Include this folder in the surrounding workspace/exclusion list; keep it aligned with the actual directory name.
+  - member_e_experience
+# Explains: Declare packages required by this package at runtime.
+dependencies:
+  # Explains: Configure Flutter itself or select the Flutter SDK dependency.
+  flutter:
+    # Explains: Select the Dart version constraint or SDK-provided dependency.
+    sdk: flutter
+  # Explains: Declare this internal LinkWorks package; the following path points to the owner folder.
+  linkworks_common:
+    # Explains: Resolve this dependency from the specified local folder; update it after folder renames.
+    path: common
+  # Explains: Declare this internal LinkWorks package; the following path points to the owner folder.
+  linkworks_auth:
+    # Explains: Resolve this dependency from the specified local folder; update it after folder renames.
+    path: member_a_auth
+  # Explains: Declare this internal LinkWorks package; the following path points to the owner folder.
+  linkworks_discovery:
+    # Explains: Resolve this dependency from the specified local folder; update it after folder renames.
+    path: member_b_discovery
+  # Explains: Declare this internal LinkWorks package; the following path points to the owner folder.
+  linkworks_jobs:
+    # Explains: Resolve this dependency from the specified local folder; update it after folder renames.
+    path: member_c_jobs
+  # Explains: Declare this internal LinkWorks package; the following path points to the owner folder.
+  linkworks_communication:
+    # Explains: Resolve this dependency from the specified local folder; update it after folder renames.
+    path: member_d_communication
+  # Explains: Declare this internal LinkWorks package; the following path points to the owner folder.
+  linkworks_experience:
+    # Explains: Resolve this dependency from the specified local folder; update it after folder renames.
+    path: member_e_experience
+  # Explains: Declare the package used to initialize the Firebase client; the version constraint must remain compatible across the workspace.
+  firebase_core: ^4.14.0
+  # Explains: Declare the package used to manage observable app/feature state; the version constraint must remain compatible across the workspace.
+  flutter_riverpod: ^3.4.3
+  # Firestore is imported by the isolated Phase 1 development entry point.
+  cloud_firestore: ^6.9.0
+# Explains: Declare packages needed only for development, generation, or tests.
+dev_dependencies:
+  # Explains: Use the Flutter unit/widget test framework.
+  flutter_test:
+    # Explains: Select the Dart version constraint or SDK-provided dependency.
+    sdk: flutter
+  # Explains: Use the SDK integration-test support for future device-level checks.
+  integration_test:
+    # Explains: Select the Dart version constraint or SDK-provided dependency.
+    sdk: flutter
+  # Explains: Apply the shared Flutter/Dart analysis rules.
+  flutter_lints: ^6.0.0
+# Explains: Configure Flutter itself or select the Flutter SDK dependency.
+flutter:
+  # Explains: Bundle Material icons used by the UI.
+  uses-material-design: true
