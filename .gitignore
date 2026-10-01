@@ -1,0 +1,4 @@
+# Keep project readme files and the planning document local.
+README*
+readme*
+/LinkWorks_React_Native_Project_Plan.docx
