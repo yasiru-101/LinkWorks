@@ -1,35 +1,182 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function owns(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function account(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    function validRole(data) {
+      return data.activeRole in ['client', 'worker']
+        && (data.activeRole == 'client' ? data.isClient : data.isWorker);
+    }
+
+    // The private account contains the verified phone and one or both allowed roles.
     match /users/{userId} {
-      function isOwner() {
-        return request.auth != null && request.auth.uid == userId;
+      function validAccount(data) {
+        return data.name is string && data.name.size() > 0 && data.name.size() <= 80
+          && data.city is string && data.city.size() > 0 && data.city.size() <= 80
+          && data.phone == request.auth.token.phone_number
+          && data.isClient is bool && data.isWorker is bool
+          && (data.isClient || data.isWorker)
+          && validRole(data)
+          && data.updatedAt == request.time;
       }
 
-      function validProfile() {
-        return request.resource.data.name is string
-          && request.resource.data.name.size() > 0
-          && request.resource.data.city is string
-          && request.resource.data.city.size() > 0
-          && request.resource.data.phone == request.auth.token.phone_number
-          && request.resource.data.isClient is bool
-          && request.resource.data.isWorker is bool
-          && (request.resource.data.isClient || request.resource.data.isWorker);
-      }
-
-      allow get: if isOwner();
+      allow get: if owns(userId);
       allow list: if false;
-      allow create: if isOwner()
-        && validProfile()
+      allow create: if owns(userId)
         && request.resource.data.keys().hasOnly([
-          'name', 'phone', 'city', 'isClient', 'isWorker', 'createdAt', 'updatedAt'
-        ]);
-      allow update: if isOwner()
-        && validProfile()
+          'name', 'phone', 'city', 'isClient', 'isWorker', 'activeRole', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.createdAt == request.time
+        && validAccount(request.resource.data);
+      allow update: if owns(userId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'name', 'city', 'isClient', 'isWorker', 'updatedAt'
-        ]);
+          'name', 'city', 'isClient', 'isWorker', 'activeRole', 'updatedAt'
+        ])
+        && validAccount(request.resource.data);
       allow delete: if false;
     }
+
+    // Public worker records never contain the phone number or private account settings.
+    match /workerProfiles/{workerId} {
+      function validBase(base) {
+        return base is map
+          && base.keys().hasOnly(['lat', 'lng', 'geohash'])
+          && base.lat is number && base.lat >= -90 && base.lat <= 90
+          && base.lng is number && base.lng >= -180 && base.lng <= 180
+          && base.geohash is string && base.geohash.size() >= 5 && base.geohash.size() <= 12;
+      }
+
+      function validWorker(data) {
+        return data.userId == workerId
+          && data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 80
+          && data.city is string && data.city.size() > 0 && data.city.size() <= 80
+          && data.skills is list && data.skills.size() > 0 && data.skills.size() <= 12
+          && data.bio is string && data.bio.size() >= 10 && data.bio.size() <= 1000
+          && data.experienceYears is int && data.experienceYears >= 0 && data.experienceYears <= 80
+          && data.dayRateLkr is int && data.dayRateLkr > 0
+          && validBase(data.base)
+          && data.serviceRadiusKm is int && data.serviceRadiusKm >= 1 && data.serviceRadiusKm <= 50
+          && data.portfolio is list && data.portfolio.size() <= 20
+          && data.isAvailable is bool
+          && data.ratingAvg is number && data.ratingCount is int && data.jobsCompleted is int
+          && data.updatedAt == request.time;
+      }
+
+      allow get, list: if signedIn();
+      allow create: if owns(workerId)
+        && account(workerId).isWorker == true
+        && request.resource.data.keys().hasOnly([
+          'userId', 'displayName', 'city', 'skills', 'bio', 'experienceYears', 'dayRateLkr',
+          'base', 'serviceRadiusKm', 'portfolio', 'isAvailable', 'ratingAvg', 'ratingCount',
+          'jobsCompleted', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.ratingAvg == 0
+        && request.resource.data.ratingCount == 0
+        && request.resource.data.jobsCompleted == 0
+        && request.resource.data.createdAt == request.time
+        && validWorker(request.resource.data);
+      allow update: if owns(workerId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName', 'city', 'skills', 'bio', 'experienceYears', 'dayRateLkr',
+          'base', 'serviceRadiusKm', 'portfolio', 'isAvailable', 'updatedAt'
+        ])
+        && validWorker(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Categories are read by signed-in users and seeded only through trusted tooling.
+    match /categories/{categoryId} {
+      allow get, list: if signedIn();
+      allow write: if false;
+    }
+
+    // Clients create open jobs. Assignment and counters require trusted backend code.
+    match /jobs/{jobId} {
+      function validLocation(geo) {
+        return geo is map
+          && geo.keys().hasOnly(['lat', 'lng', 'geohash'])
+          && geo.lat is number && geo.lat >= -90 && geo.lat <= 90
+          && geo.lng is number && geo.lng >= -180 && geo.lng <= 180
+          && geo.geohash is string && geo.geohash.size() >= 5 && geo.geohash.size() <= 12;
+      }
+
+      function validJob(data) {
+        return data.clientId is string
+          && data.title is string && data.title.size() >= 5 && data.title.size() <= 120
+          && data.description is string && data.description.size() >= 10 && data.description.size() <= 3000
+          && data.categoryId is string && data.categoryId.size() > 0
+          && data.photos is list && data.photos.size() <= 5
+          && data.get('budgetMinLkr', 0) is int && data.get('budgetMinLkr', 0) >= 0
+          && data.get('budgetMaxLkr', 0) is int && data.get('budgetMaxLkr', 0) >= data.get('budgetMinLkr', 0)
+          && validLocation(data.geo)
+          && data.addressText is string && data.addressText.size() > 0
+          && data.applicationCount is int && data.applicationCount >= 0
+          && data.updatedAt == request.time;
+      }
+
+      allow get, list: if signedIn()
+        && (resource.data.status == 'open'
+          || resource.data.clientId == request.auth.uid
+          || resource.data.get('assignedWorkerId', '') == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.clientId == request.auth.uid
+        && account(request.auth.uid).isClient == true
+        && request.resource.data.keys().hasOnly([
+          'clientId', 'title', 'description', 'categoryId', 'photos', 'budgetMinLkr',
+          'budgetMaxLkr', 'geo', 'addressText', 'preferredDate', 'status',
+          'applicationCount', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.status == 'open'
+        && request.resource.data.applicationCount == 0
+        && request.resource.data.createdAt == request.time
+        && validJob(request.resource.data);
+      allow update: if signedIn()
+        && resource.data.clientId == request.auth.uid
+        && resource.data.status == 'open'
+        && request.resource.data.status in ['open', 'cancelled']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'description', 'categoryId', 'photos', 'budgetMinLkr',
+          'budgetMaxLkr', 'geo', 'addressText', 'preferredDate', 'status', 'updatedAt'
+        ])
+        && validJob(request.resource.data);
+      allow delete: if false;
+
+      // Workers submit one quote; clients may list their own job's applications.
+      match /applications/{workerId} {
+        function parentJob() {
+          return get(/databases/$(database)/documents/jobs/$(jobId)).data;
+        }
+
+        allow get: if signedIn() && (request.auth.uid == workerId || request.auth.uid == parentJob().clientId);
+        allow list: if signedIn() && request.auth.uid == parentJob().clientId;
+        allow create: if owns(workerId)
+          && parentJob().status == 'open'
+          && parentJob().clientId != workerId
+          && exists(/databases/$(database)/documents/workerProfiles/$(workerId))
+          && request.resource.data.keys().hasOnly(['workerId', 'message', 'quotedPriceLkr', 'status', 'createdAt', 'updatedAt'])
+          && request.resource.data.workerId == workerId
+          && request.resource.data.message is string && request.resource.data.message.size() >= 10
+          && request.resource.data.quotedPriceLkr is int && request.resource.data.quotedPriceLkr > 0
+          && request.resource.data.status == 'submitted'
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    // Later phases must add participant-specific access before these paths open.
+    match /chats/{chatId}/{document=**} { allow read, write: if false; }
+    match /reviews/{reviewId} { allow read, write: if false; }
+    match /reports/{reportId} { allow read, write: if false; }
   }
 }

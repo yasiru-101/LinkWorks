@@ -2,3 +2,29 @@
 README*
 readme*
 /LinkWorks_React_Native_Project_Plan.docx
+/AGENTS.md
+/PROJECT_IMPLEMENTATION_PLAN.md
+/docs
+/.idea/
+/.agents/
+/.codex/
+
+# Local task briefs and agent guidance; keep these out of GitHub.
+/Yasiru/MEMBER_1_AUTH_AND_ONBOARDING.md
+/Pasindu/
+/Thimanya/
+/Chanuli/
+/Bhashitha/
+/mobile/AGENTS.md
+**/AGENTS.md
+
+# Owner-specific implementation outside Yasiru's folder stays local.
+/mobile/src/features/Pasindu/
+/mobile/src/features/Thimanya/
+/mobile/src/features/Chanuli/
+/mobile/src/features/Bhashitha/
+
+# Firebase emulator output is local diagnostic data.
+/mobile/firebase-debug.log
+/mobile/firestore-debug.log
+/mobile/ui-debug.log
