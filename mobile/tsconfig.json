@@ -8,6 +8,15 @@
       ],
       "@/assets/*": [
         "./assets/*"
+      ],
+      "react": [
+        "./node_modules/@types/react"
+      ],
+      "react/*": [
+        "./node_modules/@types/react/*"
+      ],
+      "*": [
+        "./node_modules/*"
       ]
     }
   },
@@ -15,6 +24,16 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "../Yasiru/**/*.ts",
+    "../Yasiru/**/*.tsx",
+    "../Pasindu/**/*.ts",
+    "../Pasindu/**/*.tsx",
+    "../Thimanya/**/*.ts",
+    "../Thimanya/**/*.tsx",
+    "../Chanuli/**/*.ts",
+    "../Chanuli/**/*.tsx",
+    "../Bhashitha/**/*.ts",
+    "../Bhashitha/**/*.tsx"
   ]
 }
