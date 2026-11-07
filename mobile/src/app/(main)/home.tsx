@@ -1,4 +1,2 @@
-import PlaceholderScreen from '../../../../Bhashitha/Navigation/PlaceholderScreen';
-
-// Client Home is reserved for the Phase 2 nearby worker feed.
-export default function HomeRoute() { return <PlaceholderScreen title="Home" nextPhase={2} />; }
+// Expo Router route for client Home: Pasindu owns the discovery screen.
+export { default } from '../../../../Pasindu/Discovery/ClientHomeScreen';

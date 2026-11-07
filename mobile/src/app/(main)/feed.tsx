@@ -1,4 +1,2 @@
-import PlaceholderScreen from '../../../../Bhashitha/Navigation/PlaceholderScreen';
-
-// Worker Feed is reserved for the Phase 2 nearby jobs flow.
-export default function FeedRoute() { return <PlaceholderScreen title="Feed" nextPhase={2} />; }
+// Expo Router route for worker Feed: Thimanya owns the job feed.
+export { default } from '../../../../Thimanya/Jobs/WorkerFeedScreen';
