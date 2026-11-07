@@ -3,6 +3,8 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { ActivityIndicator, Pressable, Text, useColorScheme, View } from 'react-native';
 import { AuthProvider, useAuth } from '../../../Yasiru/Auth/AuthContext';
 
+import { SearchCenterProvider } from '../../../Pasindu/Discovery/search-center';
+
 // Gate routes from the server-loaded account state, while keeping Terms public.
 function ProtectedStack() {
   const { user, profile, workerReady, loading, error, refreshProfile, signOut } = useAuth();
@@ -26,6 +28,9 @@ function ProtectedStack() {
     </Stack.Protected>
     <Stack.Protected guard={!!user && !!profile && (!profile.isWorker || workerReady)}>
       <Stack.Screen name="(main)" />
+      <Stack.Screen name="post-job" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="job/[id]" />
+      <Stack.Screen name="worker/[id]" />
     </Stack.Protected>
     <Stack.Screen name="terms" />
   </Stack>;
@@ -42,7 +47,11 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AuthProvider><ProtectedStack /></AuthProvider>
+      <AuthProvider>
+        <SearchCenterProvider>
+          <ProtectedStack />
+        </SearchCenterProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

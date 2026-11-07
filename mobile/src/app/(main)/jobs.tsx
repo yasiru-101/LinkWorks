@@ -1,4 +1,2 @@
-import PlaceholderScreen from '../../../../Bhashitha/Navigation/PlaceholderScreen';
-
-// My Jobs is reserved for the Phase 2 posting and tracking flow.
-export default function JobsRoute() { return <PlaceholderScreen title="My Jobs" nextPhase={2} />; }
+// Expo Router route for My Jobs: Thimanya owns client job management.
+export { default } from '../../../../Thimanya/Jobs/MyJobsScreen';

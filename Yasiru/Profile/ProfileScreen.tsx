@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { Action, Card, Page, Status } from '../../Bhashitha/Design/Primitives';
@@ -31,6 +32,7 @@ export default function ProfileScreen() {
       <Text style={styles.line}>Role: {profile?.activeRole === 'worker' ? 'Worker' : 'Client'}</Text>
       <Text style={styles.line}>Phone: {profile?.phone}</Text>
       {profile?.isClient && profile.isWorker ? <Action label={profile.activeRole === 'client' ? 'Switch to Worker' : 'Switch to Client'} onPress={() => { void switchRole(); }} busy={busy} disabled={!workerReady} /> : null}
+      {profile?.isWorker ? <Action label="Edit Worker Services & Skills" secondary onPress={() => router.push('/worker-setup')} /> : null}
       {profile?.isWorker && !workerReady ? <Status message="Finish worker setup before switching to Worker mode." /> : null}
     </Card>
     {error ? <Status message={error} error /> : null}

@@ -14,6 +14,8 @@ type AuthState = {
   saveProfile: (input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'>) => Promise<void>;
   selectRole: (role: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
+  signInDemoClient?: () => void;
+  signInDemoWorker?: () => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
