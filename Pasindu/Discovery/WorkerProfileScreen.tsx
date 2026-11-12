@@ -1,50 +1,79 @@
-import { doc, getDocFromServer, getFirestore } from '@react-native-firebase/firestore';
+import { collection, doc, getDocFromServer, getDocs, getFirestore, query, where } from '@react-native-firebase/firestore';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Action, Card } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
-import { SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
+import { ReportModal } from '../../Bhashitha/Moderation/ReportModal';
+import { SEED_REVIEWS, SEED_WORKERS, type SeedReview } from '../../Bhashitha/Seed/seed-data';
 import type { WorkerProfile } from '../../mobile/src/types/domain';
 
-// Detailed public worker profile screen with stats, bio, skills, and quote request CTA.
+// Detailed public worker profile screen with stats, bio, skills, reviews, and quote request CTA.
 export default function WorkerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [worker, setWorker] = useState<WorkerProfile | null>(null);
+  const [reviews, setReviews] = useState<SeedReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
-  // Fetch the worker's public document or find from seed workers.
+  // Fetch the worker's public document and their verified customer reviews.
   useEffect(() => {
-    async function fetchWorker() {
+    async function fetchWorkerAndReviews() {
       if (!id) return;
       try {
         setLoading(true);
         setError('');
+
+        // 1. Fetch worker profile
+        let currentWorker: WorkerProfile | null = null;
         try {
           const snapshot = await getDocFromServer(doc(getFirestore(), 'workerProfiles', id));
           if (snapshot.exists()) {
-            setWorker(snapshot.data() as WorkerProfile);
-            return;
+            currentWorker = snapshot.data() as WorkerProfile;
           }
         } catch {
-          // Fall back to seed workers in demo/preview.
+          // Fall back to seed workers in demo/preview
         }
 
-        const fallback = SEED_WORKERS.find((w) => w.userId === id);
-        if (fallback) {
-          setWorker(fallback);
-        } else {
-          setError('Worker profile not found.');
+        if (!currentWorker) {
+          currentWorker = SEED_WORKERS.find((w) => w.userId === id) ?? null;
         }
+
+        if (!currentWorker) {
+          setError('Worker profile not found.');
+          return;
+        }
+        setWorker(currentWorker);
+
+        // 2. Fetch customer reviews for this worker
+        let fetchedReviews: SeedReview[] = [];
+        try {
+          const revSnap = await getDocs(
+            query(collection(getFirestore(), 'reviews'), where('rateeId', '==', id))
+          );
+          if (!revSnap.empty) {
+            fetchedReviews = revSnap.docs.map((d) => ({
+              id: d.id,
+              ...(d.data() as Omit<SeedReview, 'id'>),
+            }));
+          }
+        } catch {
+          // Fall back to seed reviews in demo/preview
+        }
+
+        if (fetchedReviews.length === 0) {
+          fetchedReviews = SEED_REVIEWS.filter((r) => r.rateeId === id);
+        }
+        setReviews(fetchedReviews);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error loading worker.');
       } finally {
         setLoading(false);
       }
     }
-    void fetchWorker();
+    void fetchWorkerAndReviews();
   }, [id]);
 
   if (loading) {
@@ -66,13 +95,18 @@ export default function WorkerProfileScreen() {
   }
 
   const primarySkill = worker.skills[0] ?? 'Plumbing';
+  const averageRating =
+    reviews.length > 0
+      ? reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length
+      : worker.ratingAvg;
+  const reviewCount = reviews.length > 0 ? reviews.length : worker.ratingCount;
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
         {/* Top Navigation Bar */}
         <View style={styles.topBar}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backText}>← Back</Text>
           </Pressable>
           <Text style={styles.screenTitle}>Worker Profile</Text>
@@ -96,9 +130,9 @@ export default function WorkerProfileScreen() {
           <View style={styles.metricsGrid}>
             <View style={styles.metricBox}>
               <Text style={styles.metricValue}>
-                {worker.ratingCount > 0 ? worker.ratingAvg.toFixed(1) : '—'} ★
+                {reviewCount > 0 ? averageRating.toFixed(1) : '—'} ★
               </Text>
-              <Text style={styles.metricLabel}>{worker.ratingCount} reviews</Text>
+              <Text style={styles.metricLabel}>{reviewCount} reviews</Text>
             </View>
             <View style={styles.metricBox}>
               <Text style={styles.metricValue}>{worker.jobsCompleted}</Text>
@@ -133,6 +167,28 @@ export default function WorkerProfileScreen() {
           <Text style={styles.bioText}>{worker.bio}</Text>
         </Card>
 
+        {/* Verified Customer Reviews Section */}
+        <Card title={`Customer Reviews (${reviews.length})`}>
+          {reviews.length === 0 ? (
+            <Text style={styles.emptyReviews}>
+              No reviews yet. Completed jobs will display verified client ratings here.
+            </Text>
+          ) : (
+            reviews.map((rev) => (
+              <View key={rev.id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.raterName}>{rev.raterName}</Text>
+                  <Text style={styles.reviewStars}>
+                    {'★'.repeat(rev.stars)}{'☆'.repeat(5 - rev.stars)}
+                  </Text>
+                </View>
+                <Text style={styles.reviewBody}>{rev.text}</Text>
+                <Text style={styles.reviewDate}>{rev.createdAt}</Text>
+              </View>
+            ))
+          )}
+        </Card>
+
         {/* Privacy Notice Banner */}
         <View style={styles.privacyBanner}>
           <Text style={styles.privacyIcon}>🔒</Text>
@@ -154,7 +210,25 @@ export default function WorkerProfileScreen() {
             })
           }
         />
+
+        {/* Trust & Safety Moderation Link */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setReportModalVisible(true)}
+          style={styles.reportBtn}
+        >
+          <Text style={styles.reportBtnText}>⚠️ Report Profile or Concern</Text>
+        </Pressable>
       </ScrollView>
+
+      {/* Report Modal */}
+      <ReportModal
+        visible={reportModalVisible}
+        targetId={worker.userId}
+        targetType="user"
+        targetTitle={worker.displayName}
+        onClose={() => setReportModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -305,5 +379,54 @@ const styles = StyleSheet.create({
     color: '#17644b',
     fontSize: 13,
     lineHeight: 18,
+  },
+  emptyReviews: {
+    color: palette.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  reviewCard: {
+    backgroundColor: palette.background,
+    borderRadius: 12,
+    padding: spacing.md,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginBottom: spacing.xs,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  raterName: {
+    color: palette.heading,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  reviewStars: {
+    color: '#f59e0b',
+    fontSize: 14,
+    letterSpacing: 2,
+  },
+  reviewBody: {
+    color: '#344454',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  reviewDate: {
+    color: palette.muted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  reportBtn: {
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  reportBtnText: {
+    color: palette.muted,
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
