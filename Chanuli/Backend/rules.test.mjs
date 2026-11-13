@@ -96,8 +96,113 @@ try {
   await assertSucceeds(setDoc(doc(worker, 'jobs/job-two/applications/worker'), application));
   await assertFails(updateDoc(doc(worker, 'jobs/job-two/applications/worker'), { status: 'accepted' }));
   await assertFails(getDoc(doc(stranger, 'jobs/job-two/applications/worker')));
+
+  // Phase 3: Real-time chat security
+  // Owner and worker are assigned participants in chat-job-two
+  const chatRef = doc(owner, 'chats/job-two');
+  const chatData = {
+    jobId: 'job-two',
+    jobTitle: 'Second open job',
+    jobStatus: 'assigned',
+    participants: ['owner', 'worker'],
+    lastMessage: 'Job assigned!',
+    lastAt: serverTimestamp(),
+  };
+  await assertSucceeds(setDoc(chatRef, chatData));
+  await assertSucceeds(getDoc(doc(owner, 'chats/job-two')));
+  await assertSucceeds(getDoc(doc(worker, 'chats/job-two')));
+  // Stranger denied reading chat
+  await assertFails(getDoc(doc(stranger, 'chats/job-two')));
+
+  // Messages in chat: participant can send and read
+  const msgRef = doc(owner, 'chats/job-two/messages/msg-1');
+  await assertSucceeds(setDoc(msgRef, {
+    senderId: 'owner',
+    text: 'Hello, when can you start the work?',
+    createdAt: serverTimestamp(),
+  }));
+  await assertSucceeds(getDoc(doc(worker, 'chats/job-two/messages/msg-1')));
+  // Stranger denied reading message
+  await assertFails(getDoc(doc(stranger, 'chats/job-two/messages/msg-1')));
+  // Stranger denied sending message
+  await assertFails(setDoc(doc(stranger, 'chats/job-two/messages/msg-stranger'), {
+    senderId: 'stranger',
+    text: 'Intrusion attempt',
+    createdAt: serverTimestamp(),
+  }));
+
+  // Phase 3: Reviews security
+  // Review before job completion must fail (job-two is still open)
+  const prematureReview = {
+    jobId: 'job-two',
+    raterId: 'owner',
+    rateeId: 'worker',
+    stars: 5,
+    text: 'Great work even before completion',
+    createdAt: serverTimestamp(),
+  };
+  await assertFails(setDoc(doc(owner, 'reviews/job-two_owner'), prematureReview));
+
+  // Set up completed job via admin context
+  await environment.withSecurityRulesDisabled(async (context) => {
+    const adminDb = context.firestore();
+    await setDoc(doc(adminDb, 'jobs/job-completed'), {
+      clientId: 'owner',
+      title: 'Completed bathroom plumbing',
+      description: 'Fully finished job',
+      categoryId: 'plumbing',
+      photos: [],
+      budgetMinLkr: 5000,
+      budgetMaxLkr: 8000,
+      geo: { lat: 6.9271, lng: 79.8612, geohash: 'tc0m0m0m0' },
+      addressText: 'Colombo',
+      status: 'completed',
+      assignedWorkerId: 'worker',
+      acceptedPriceLkr: 6500,
+      applicationCount: 1,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  // Client creates review for completed job -> succeeds
+  const validReview = {
+    jobId: 'job-completed',
+    raterId: 'owner',
+    rateeId: 'worker',
+    stars: 5,
+    text: 'Prompt, neat, and highly skilled work.',
+    createdAt: serverTimestamp(),
+  };
+  await assertSucceeds(setDoc(doc(owner, 'reviews/job-completed_owner'), validReview));
+
+  // Stranger denied reviewing completed job
+  const strangerReview = {
+    jobId: 'job-completed',
+    raterId: 'stranger',
+    rateeId: 'worker',
+    stars: 1,
+    text: 'Fake negative review from a stranger',
+    createdAt: serverTimestamp(),
+  };
+  await assertFails(setDoc(doc(stranger, 'reviews/job-completed_stranger'), strangerReview));
+
+  // Duplicate review from same rater with spoofed reviewId blocked
+  await assertFails(setDoc(doc(owner, 'reviews/job-completed_owner_2'), validReview));
+
+  // Phase 3: Moderation reports
+  const reportData = {
+    reporterId: 'owner',
+    targetId: 'worker',
+    targetType: 'user',
+    reason: 'Unfair pricing or fraudulent quote',
+    createdAt: serverTimestamp(),
+  };
+  await assertSucceeds(setDoc(doc(owner, 'reports/report-1'), reportData));
+  await assertFails(setDoc(doc(guest, 'reports/report-guest'), reportData));
+
   assert.ok(true);
-  process.stdout.write('Firestore owner, query, and denied-operation rules passed.\n');
+  process.stdout.write('Firestore owner, query, chat, review, report, and denied-operation rules passed.\n');
 } finally {
   await environment.cleanup();
 }
