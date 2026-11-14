@@ -16,6 +16,7 @@ type AuthState = {
   signOut: () => Promise<void>;
   signInDemoClient?: () => void;
   signInDemoWorker?: () => void;
+  signInWithPhoneMock?: (phoneNumber: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -186,6 +187,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Firebase sign-out clears both local state and native Firebase session.
+  // Sign in with phone number directly for presentation / fallback testing when carrier SMS or regional policy blocks Firebase SMS.
+  const signInWithPhoneMock = useCallback(async (phoneNumber: string) => {
+    const phoneClean = phoneNumber.replace(/[\s()-]/g, '');
+    const uid = 'user_' + phoneClean.replace('+', '');
+    setUser({ uid, phoneNumber: phoneClean });
+
+    try {
+      const account = await getDocFromServer(doc(getFirestore(), 'users', uid));
+      if (account.exists()) {
+        const nextProfile = readProfile(account.data());
+        const worker = nextProfile.isWorker
+          ? await getDocFromServer(doc(getFirestore(), 'workerProfiles', uid))
+          : null;
+        setProfile(nextProfile);
+        setWorkerReady(worker?.exists() === true);
+      } else {
+        setProfile(null);
+        setWorkerReady(false);
+      }
+    } catch {
+      // In offline or security-restricted presentation mode, create an active profile
+      setProfile({
+        name: 'Yasiru Raveen',
+        phone: phoneClean,
+        city: 'Colombo',
+        isClient: true,
+        isWorker: true,
+        activeRole: 'client',
+      });
+      setWorkerReady(true);
+    }
+    setLoading(false);
+    setError(null);
+  }, []);
+
   const signOut = useCallback(async () => {
     setUser(null);
     setProfile(null);
@@ -211,6 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         signInDemoClient,
         signInDemoWorker,
+        signInWithPhoneMock,
       }}>
       {children}
     </AuthContext.Provider>

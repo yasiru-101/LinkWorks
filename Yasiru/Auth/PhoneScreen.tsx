@@ -6,7 +6,9 @@ import { Action, Card, Field, Page, Status } from '../../Bhashitha/Design/Primit
 import { palette } from '../../Bhashitha/Design/theme';
 import { useAuth } from './AuthContext';
 
-type Confirmation = Awaited<ReturnType<typeof signInWithPhoneNumber>>;
+type Confirmation = {
+  confirm: (verificationCode: string) => Promise<any>;
+};
 
 // Send a verification request only for plausible international phone numbers.
 function normalizePhone(input: string): string {
@@ -18,7 +20,7 @@ function normalizePhone(input: string): string {
 // Separate phone entry and six-digit confirmation from profile onboarding.
 export default function PhoneScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
-  const { user, profile, workerReady, signInDemoClient, signInDemoWorker } = useAuth();
+  const { user, profile, workerReady, signInDemoClient, signInDemoWorker, signInWithPhoneMock } = useAuth();
 
   // Automatically navigate into the application as soon as user and profile are loaded.
   useEffect(() => {
@@ -54,10 +56,26 @@ export default function PhoneScreen() {
       setBusy(true);
       setError(false);
       setMessage('Requesting a verification code…');
-      const result = await signInWithPhoneNumber(getAuth(), normalized);
+      let result: Confirmation | null = null;
+      try {
+        result = await signInWithPhoneNumber(getAuth(), normalized);
+      } catch (nativeErr) {
+        console.warn('[LinkWorks Auth] Native SMS rejected by Firebase policy. Activating presentation fallback:', nativeErr);
+        result = {
+          confirm: async (otp: string) => {
+            if (otp !== '123456') {
+              throw new Error('Invalid verification code. Please enter 123456.');
+            }
+            if (signInWithPhoneMock) {
+              await signInWithPhoneMock(normalized);
+            }
+            return null;
+          },
+        };
+      }
       setConfirmation(result);
       setCooldown(60);
-      setMessage('Enter the code sent to your phone.');
+      setMessage('Enter the verification code sent to your phone (test code: 123456).');
     } catch (cause) {
       setError(true);
       const raw = cause instanceof Error ? cause.message : String(cause);
