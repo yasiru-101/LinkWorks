@@ -250,3 +250,59 @@ export const SEED_JOBS: (Job & { id: string })[] = [
     applicationCount: 2,
   },
 ];
+
+
+export type SeedReview = {
+  id: string;
+  jobId: string;
+  raterId: string;
+  raterName: string;
+  rateeId: string;
+  stars: 1 | 2 | 3 | 4 | 5;
+  text: string;
+  createdAt: string;
+};
+
+// Seed reviews for testing profile display, ratings calculation, and moderation preview.
+export const SEED_REVIEWS: SeedReview[] = [
+  {
+    id: 'rev-1',
+    jobId: 'job-colombo-kitchen-pipe',
+    raterId: 'client-demo-1',
+    raterName: 'Kamal Gunaratne',
+    rateeId: 'worker-colombo-plumber-1',
+    stars: 5,
+    text: 'Arrived promptly within 45 minutes of booking, diagnosed the leak cleanly and replaced the sink waste coupling. Outstanding work.',
+    createdAt: '2026-10-28',
+  },
+  {
+    id: 'rev-2',
+    jobId: 'job-prev-plumb-2',
+    raterId: 'client-demo-2',
+    raterName: 'Dilani Perera',
+    rateeId: 'worker-colombo-plumber-1',
+    stars: 5,
+    text: 'Fixed our overhead pressure pump issue with genuine spare parts. Highly recommended professional.',
+    createdAt: '2026-10-15',
+  },
+  {
+    id: 'rev-3',
+    jobId: 'job-prev-carp-1',
+    raterId: 'client-demo-3',
+    raterName: 'Rohan Jayasuriya',
+    rateeId: 'worker-moratuwa-carpenter-1',
+    stars: 5,
+    text: 'Master craftsman. Finished our teak dining table repair beautifully with precise joinery.',
+    createdAt: '2026-10-20',
+  },
+  {
+    id: 'rev-4',
+    jobId: 'job-prev-elec-1',
+    raterId: 'client-demo-4',
+    raterName: 'Sanjeewa Wickramasinghe',
+    rateeId: 'worker-colombo-electrician-1',
+    stars: 5,
+    text: 'Sorted out our tripping circuit breaker quickly and safely. Explained everything clearly.',
+    createdAt: '2026-10-22',
+  },
+];

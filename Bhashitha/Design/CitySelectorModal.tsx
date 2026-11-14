@@ -2,16 +2,18 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CITY_CENTERS, type SupportedCity } from '../../Pasindu/Discovery/geo';
 import { palette, spacing } from './theme';
 
-// Modal selector for instantly switching the active search city.
+// Modal selector for switching the active search city or reverting to live GPS.
 export function CitySelectorModal({
   visible,
   currentCity,
   onSelectCity,
+  onUseGps,
   onClose,
 }: {
   visible: boolean;
   currentCity: SupportedCity;
   onSelectCity: (city: SupportedCity) => void;
+  onUseGps?: () => void;
   onClose: () => void;
 }) {
   const cities = Object.keys(CITY_CENTERS) as SupportedCity[];
@@ -25,8 +27,33 @@ export function CitySelectorModal({
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.dialog} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>Select Service City</Text>
-          <Text style={styles.subtitle}>Filter nearby workers and jobs by Sri Lankan city center:</Text>
+          <Text style={styles.title}>Select Location</Text>
+          <Text style={styles.subtitle}>
+            Filter nearby workers and jobs by your live GPS position or a supported Sri Lankan city:
+          </Text>
+
+          {/* Quick Action: Use Live Device GPS */}
+          {onUseGps ? (
+            <Pressable
+              accessibilityRole="button"
+              style={styles.gpsRow}
+              onPress={() => {
+                onUseGps();
+                onClose();
+              }}
+            >
+              <Text style={styles.gpsIcon}>📍</Text>
+              <View style={styles.gpsTextContainer}>
+                <Text style={styles.gpsTitle}>Use Current GPS Location</Text>
+                <Text style={styles.gpsSubtitle}>Detect via Fused Location Provider</Text>
+              </View>
+              <Text style={styles.gpsArrow}>→</Text>
+            </Pressable>
+          ) : null}
+
+          <View style={styles.divider}>
+            <Text style={styles.dividerText}>OR SELECT CITY</Text>
+          </View>
 
           <View style={styles.list}>
             {cities.map((city) => {
@@ -68,54 +95,95 @@ const styles = StyleSheet.create({
   dialog: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: palette.surface,
-    borderRadius: 20,
-    padding: spacing.lg,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: spacing.md,
     gap: spacing.sm,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 10,
-    elevation: 8,
+    elevation: 5,
   },
   title: {
     color: palette.heading,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     fontFamily: 'Plus Jakarta Sans',
   },
   subtitle: {
     color: palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  gpsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#f0fdf4',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    marginVertical: 4,
+  },
+  gpsIcon: {
+    fontSize: 20,
+  },
+  gpsTextContainer: {
+    flex: 1,
+  },
+  gpsTitle: {
     fontSize: 14,
-    marginBottom: spacing.xs,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  gpsSubtitle: {
+    fontSize: 11,
+    color: '#15803d',
+  },
+  gpsArrow: {
+    fontSize: 16,
+    color: '#166534',
+    fontWeight: '700',
+  },
+  divider: {
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  dividerText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: palette.muted,
+    letterSpacing: 0.8,
   },
   list: {
-    gap: spacing.xs,
+    gap: 4,
   },
   cityRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: palette.background,
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
   selectedRow: {
-    backgroundColor: palette.primary,
+    backgroundColor: '#e6f7ef',
   },
   cityName: {
-    fontSize: 16,
-    fontWeight: '600',
     color: palette.heading,
+    fontSize: 15,
+    fontWeight: '600',
   },
   selectedName: {
-    color: '#ffffff',
+    color: palette.primary,
+    fontWeight: '800',
   },
   checkmark: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
+    color: palette.primary,
+    fontSize: 15,
+    fontWeight: '800',
   },
   closeButton: {
     alignItems: 'center',
@@ -124,7 +192,7 @@ const styles = StyleSheet.create({
   },
   closeText: {
     color: palette.muted,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
