@@ -47,7 +47,16 @@ export default function PhoneScreen() {
       setMessage('Enter the code sent to your phone.');
     } catch (cause) {
       setError(true);
-      setMessage(cause instanceof Error ? cause.message : String(cause));
+      const raw = cause instanceof Error ? cause.message : String(cause);
+      if (raw.includes('operation-not-allowed') || raw.includes('SMS unable to be sent')) {
+        setMessage(
+          'Firebase Phone Auth is disabled or SMS quota is restricted for Sri Lanka (+94) in your Firebase Console.\n\n' +
+          '• Quick Fix: Use "Quick Demo Sign-In" below to explore immediately without SMS.\n' +
+          '• Or configure "+94771234567" under "Phone numbers for testing" in Firebase Console.'
+        );
+      } else {
+        setMessage(raw);
+      }
     } finally {
       setBusy(false);
     }
@@ -69,7 +78,16 @@ export default function PhoneScreen() {
       setMessage('Phone verified. Loading your account…');
     } catch (cause) {
       setError(true);
-      setMessage(cause instanceof Error ? cause.message : String(cause));
+      const raw = cause instanceof Error ? cause.message : String(cause);
+      if (raw.includes('operation-not-allowed') || raw.includes('SMS unable to be sent')) {
+        setMessage(
+          'Firebase Phone Auth is disabled or SMS quota is restricted for Sri Lanka (+94) in your Firebase Console.\n\n' +
+          '• Quick Fix: Use "Quick Demo Sign-In" below to explore immediately without SMS.\n' +
+          '• Or configure "+94771234567" under "Phone numbers for testing" in Firebase Console.'
+        );
+      } else {
+        setMessage(raw);
+      }
     } finally {
       setBusy(false);
     }
@@ -88,7 +106,7 @@ export default function PhoneScreen() {
       </> : null}
     </Card>
     {signInDemoClient && signInDemoWorker ? (
-      <Card title="Quick Demo Sign-In (Web Preview)">
+      <Card title="Quick Demo Sign-In">
         <Text style={{ color: palette.muted, fontSize: 13, marginBottom: 8 }}>
           Skip SMS verification for immediate testing:
         </Text>

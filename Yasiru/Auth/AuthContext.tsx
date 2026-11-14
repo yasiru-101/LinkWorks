@@ -97,13 +97,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Save the private account and let the server read-back confirm the result.
   const saveProfile = useCallback(async (input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'>) => {
     const currentUser = getAuth().currentUser;
-    if (!currentUser?.phoneNumber) throw new Error('Sign in with a phone number first.');
     const name = input.name.trim();
     const city = input.city.trim();
     if (!name || !city || (!input.isClient && !input.isWorker)) {
       throw new Error('Enter name and city, then choose at least one role.');
     }
     const activeRole: UserRole = input.isClient ? 'client' : 'worker';
+
+    // Support local demo account saving when bypassing native Firebase SMS
+    if (!currentUser) {
+      setProfile({
+        name,
+        city,
+        phone: user?.phoneNumber || '+94771234567',
+        isClient: input.isClient,
+        isWorker: input.isWorker,
+        activeRole,
+      });
+      setWorkerReady(true);
+      return;
+    }
+
+    if (!currentUser.phoneNumber) throw new Error('Sign in with a phone number first.');
     const reference = doc(getFirestore(), 'users', currentUser.uid);
     await setDoc(reference, {
       name,
@@ -116,29 +131,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...(!profile ? { createdAt: serverTimestamp() } : {}),
     }, { merge: true });
     await refreshProfile();
-  }, [profile, refreshProfile]);
+  }, [profile, refreshProfile, user]);
 
   // Persist the chosen role in the private account, while allowing only enabled roles.
   const selectRole = useCallback(async (role: UserRole) => {
-    const currentUser = getAuth().currentUser;
-    if (!currentUser || !profile) throw new Error('Complete your account first.');
+    if (!profile) throw new Error('Complete your account first.');
     if ((role === 'client' && !profile.isClient) || (role === 'worker' && (!profile.isWorker || !workerReady))) {
       throw new Error('This role is not ready on your account.');
     }
-    await updateDoc(doc(getFirestore(), 'users', currentUser.uid), {
-      activeRole: role,
-      updatedAt: serverTimestamp(),
-    });
+    const currentUser = getAuth().currentUser;
+    if (currentUser) {
+      try {
+        await updateDoc(doc(getFirestore(), 'users', currentUser.uid), {
+          activeRole: role,
+          updatedAt: serverTimestamp(),
+        });
+      } catch {
+        // Fallback for offline or test mode
+      }
+    }
     setProfile({ ...profile, activeRole: role });
   }, [profile, workerReady]);
 
-  // Firebase sign-out clears the session through the listener above.
+  // Sign in as a demo client to explore discovery and job posting without SMS requirements.
+  const signInDemoClient = useCallback(() => {
+    setUser({ uid: 'demo-client-1', phoneNumber: '+94771234567' });
+    setProfile({
+      name: 'Kamal Perera',
+      phone: '+94771234567',
+      city: 'Colombo',
+      isClient: true,
+      isWorker: true,
+      activeRole: 'client',
+    });
+    setWorkerReady(true);
+    setLoading(false);
+    setError(null);
+  }, []);
+
+  // Sign in as a demo worker to explore matching job feeds and quote submissions.
+  const signInDemoWorker = useCallback(() => {
+    setUser({ uid: 'worker-colombo-plumber-1', phoneNumber: '+94779876543' });
+    setProfile({
+      name: 'Sunil Shantha',
+      phone: '+94779876543',
+      city: 'Colombo',
+      isClient: true,
+      isWorker: true,
+      activeRole: 'worker',
+    });
+    setWorkerReady(true);
+    setLoading(false);
+    setError(null);
+  }, []);
+
+  // Firebase sign-out clears both local state and native Firebase session.
   const signOut = useCallback(async () => {
-    await firebaseSignOut(getAuth());
+    setUser(null);
+    setProfile(null);
+    setWorkerReady(false);
+    try {
+      await firebaseSignOut(getAuth());
+    } catch {
+      // Ignored if not signed in via native Firebase
+    }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, profile, workerReady, loading, error, refreshProfile, saveProfile, selectRole, signOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        workerReady,
+        loading,
+        error,
+        refreshProfile,
+        saveProfile,
+        selectRole,
+        signOut,
+        signInDemoClient,
+        signInDemoWorker,
+      }}>
       {children}
     </AuthContext.Provider>
   );

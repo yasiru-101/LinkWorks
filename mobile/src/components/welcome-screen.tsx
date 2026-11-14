@@ -78,7 +78,7 @@ export default function WelcomeScreen() {
 
             {signInDemoClient && signInDemoWorker ? (
               <View style={styles.demoBox}>
-                <Text style={styles.demoHint}>Or explore instantly (Web Preview):</Text>
+                <Text style={styles.demoHint}>Or explore instantly without SMS:</Text>
                 <View style={styles.demoRow}>
                   <Pressable
                     accessibilityRole="button"
