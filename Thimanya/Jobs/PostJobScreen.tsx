@@ -1,11 +1,11 @@
 import { addDoc, collection, getFirestore, serverTimestamp } from '@react-native-firebase/firestore';
-import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Action, Card, Field, Page, Status } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { CITY_CENTERS, findNearestSupportedCity, geohashForPoint, type SupportedCity } from '../../Pasindu/Discovery/geo';
+import { getCurrentDeviceLocation, isFusedLocationAvailable, requestLocationPermissions } from '../../Pasindu/Discovery/location-service';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { validateOpenJob } from '../JobContracts/validation';
 
@@ -50,15 +50,23 @@ export default function PostJobScreen() {
     try {
       setLocatingGps(true);
       setError('');
-      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (!isFusedLocationAvailable()) {
+        setError('Device GPS module not present in this APK build. Please select your city manually.');
+        return;
+      }
+
+      const { status } = await requestLocationPermissions();
       if (status !== 'granted') {
         setError('Location permission denied. Please select a city manually.');
         return;
       }
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      const pos = await getCurrentDeviceLocation(true);
+      if (!pos) {
+        setError('Could not detect device GPS coordinates. Please select city manually.');
+        return;
+      }
+      const coords = { lat: pos.latitude, lng: pos.longitude };
       setGpsCoords(coords);
       setUseGpsCoords(true);
 

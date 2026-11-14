@@ -1,6 +1,6 @@
-import * as Location from 'expo-location';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { CITY_CENTERS, findNearestSupportedCity, type SupportedCity } from './geo';
+import { getCurrentDeviceLocation, isFusedLocationAvailable, requestLocationPermissions } from './location-service';
 
 export type SearchCenterState = {
   city: SupportedCity;
@@ -47,8 +47,16 @@ export function SearchCenterProvider({
       setIsLocating(true);
       setLocationError(null);
 
+      // Check if native Fused Location module is linked in the running APK binary
+      if (!isFusedLocationAvailable()) {
+        setIsGpsActive(false);
+        setPermissionStatus('denied');
+        setLocationError('Native location module not present in this APK build. Using city center.');
+        return false;
+      }
+
       // Check / request foreground location permission
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await requestLocationPermissions();
       setPermissionStatus(status === 'granted' ? 'granted' : 'denied');
 
       if (status !== 'granted') {
@@ -59,13 +67,16 @@ export function SearchCenterProvider({
       }
 
       // Query Android Fused Location Provider with balanced power/accuracy
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const location = await getCurrentDeviceLocation(false);
+      if (!location) {
+        setIsGpsActive(false);
+        setLocationError('Could not obtain GPS fix. Showing city center.');
+        return false;
+      }
 
       const coords = {
-        lat: location.coords.latitude,
-        lng: location.coords.longitude,
+        lat: location.latitude,
+        lng: location.longitude,
       };
 
       setLat(coords.lat);
