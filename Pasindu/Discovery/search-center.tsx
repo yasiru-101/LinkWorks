@@ -1,11 +1,19 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { CITY_CENTERS, type SupportedCity } from './geo';
+import * as Location from 'expo-location';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { CITY_CENTERS, findNearestSupportedCity, type SupportedCity } from './geo';
 
 export type SearchCenterState = {
   city: SupportedCity;
   lat: number;
   lng: number;
   radiusKm: number;
+  isGpsActive: boolean;
+  isLocating: boolean;
+  isOutOfCoverage: boolean;
+  coverageDistanceKm: number;
+  permissionStatus: 'granted' | 'denied' | 'undetermined';
+  locationError: string | null;
+  requestDeviceLocation: (forceRefresh?: boolean) => Promise<boolean>;
   setCity: (city: SupportedCity) => void;
   setRadiusKm: (radius: number) => void;
 };
@@ -13,7 +21,7 @@ export type SearchCenterState = {
 // Create a shared context for holding the active search center across feeds.
 const SearchCenterContext = createContext<SearchCenterState | null>(null);
 
-// Provide search center state initialized to Colombo or a user's chosen city.
+// Provide dynamic search center state powered by Google's Fused Location Provider on Android.
 export function SearchCenterProvider({
   initialCity = 'Colombo',
   children,
@@ -21,21 +29,93 @@ export function SearchCenterProvider({
   initialCity?: SupportedCity;
   children: ReactNode;
 }) {
+  const initialCoords = CITY_CENTERS[initialCity] ?? CITY_CENTERS.Colombo;
   const [city, setCityState] = useState<SupportedCity>(initialCity);
+  const [lat, setLat] = useState<number>(initialCoords.lat);
+  const [lng, setLng] = useState<number>(initialCoords.lng);
   const [radiusKm, setRadiusKm] = useState<number>(15);
+  const [isGpsActive, setIsGpsActive] = useState<boolean>(false);
+  const [isLocating, setIsLocating] = useState<boolean>(false);
+  const [isOutOfCoverage, setIsOutOfCoverage] = useState<boolean>(false);
+  const [coverageDistanceKm, setCoverageDistanceKm] = useState<number>(0);
+  const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
+  const [locationError, setLocationError] = useState<string | null>(null);
 
-  // When changing city, update the center coordinates from the standard catalog.
+  // Request device coordinates from the native Fused Location Provider client.
+  const requestDeviceLocation = useCallback(async (forceRefresh = false): Promise<boolean> => {
+    try {
+      setIsLocating(true);
+      setLocationError(null);
+
+      // Check / request foreground location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      setPermissionStatus(status === 'granted' ? 'granted' : 'denied');
+
+      if (status !== 'granted') {
+        setIsGpsActive(false);
+        setIsLocating(false);
+        setLocationError('Location permission denied. Showing city center.');
+        return false;
+      }
+
+      // Query Android Fused Location Provider with balanced power/accuracy
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const coords = {
+        lat: location.coords.latitude,
+        lng: location.coords.longitude,
+      };
+
+      setLat(coords.lat);
+      setLng(coords.lng);
+      setIsGpsActive(true);
+
+      // Identify nearest Sri Lankan trade hub and check coverage
+      const nearestMatch = findNearestSupportedCity(coords);
+      setCityState(nearestMatch.city);
+      setCoverageDistanceKm(nearestMatch.distanceKm);
+      setIsOutOfCoverage(!nearestMatch.inCoverage);
+
+      return true;
+    } catch (err) {
+      setIsGpsActive(false);
+      setLocationError(err instanceof Error ? err.message : 'Could not obtain GPS fix');
+      return false;
+    } finally {
+      setIsLocating(false);
+    }
+  }, []);
+
+  // Request foreground location on initial mount per Option A
+  useEffect(() => {
+    void requestDeviceLocation();
+  }, [requestDeviceLocation]);
+
+  // When user manually selects a city, switch coordinates to that city's center
   function setCity(nextCity: SupportedCity) {
     setCityState(nextCity);
+    const coords = CITY_CENTERS[nextCity] ?? CITY_CENTERS.Colombo;
+    setLat(coords.lat);
+    setLng(coords.lng);
+    setIsGpsActive(false);
+    setIsOutOfCoverage(false);
+    setLocationError(null);
   }
-
-  const coordinates = CITY_CENTERS[city] ?? CITY_CENTERS.Colombo;
 
   const value: SearchCenterState = {
     city,
-    lat: coordinates.lat,
-    lng: coordinates.lng,
+    lat,
+    lng,
     radiusKm,
+    isGpsActive,
+    isLocating,
+    isOutOfCoverage,
+    coverageDistanceKm,
+    permissionStatus,
+    locationError,
+    requestDeviceLocation,
     setCity,
     setRadiusKm,
   };
@@ -53,6 +133,13 @@ export function useSearchCenter(): SearchCenterState {
       lat: CITY_CENTERS.Colombo.lat,
       lng: CITY_CENTERS.Colombo.lng,
       radiusKm: 15,
+      isGpsActive: false,
+      isLocating: false,
+      isOutOfCoverage: false,
+      coverageDistanceKm: 0,
+      permissionStatus: 'undetermined',
+      locationError: null,
+      requestDeviceLocation: async () => false,
       setCity: () => {},
       setRadiusKm: () => {},
     };

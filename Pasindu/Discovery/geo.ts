@@ -10,6 +10,9 @@ export const CITY_CENTERS = {
 
 export type SupportedCity = keyof typeof CITY_CENTERS;
 
+// Maximum distance (km) from any supported hub to consider a user inside active trade coverage.
+export const MAX_SERVICE_DISTANCE_KM = 45;
+
 const GEOHASH_ALPHABET = '0123456789bcdefghjkmnpqrstuvwxyz';
 
 // Encode a point with the standard base-32 geohash so Firestore can index it later.
@@ -50,6 +53,32 @@ export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; ln
   const arc = Math.sin(deltaLat / 2) ** 2 +
     Math.cos(radians(a.lat)) * Math.cos(radians(b.lat)) * Math.sin(deltaLng / 2) ** 2;
   return 6371.0088 * 2 * Math.atan2(Math.sqrt(arc), Math.sqrt(1 - arc));
+}
+
+// Find the closest supported Sri Lankan trade hub for a given GPS coordinate fix.
+export function findNearestSupportedCity(coords: { lat: number; lng: number }): {
+  city: SupportedCity;
+  distanceKm: number;
+  inCoverage: boolean;
+} {
+  const cities = Object.keys(CITY_CENTERS) as SupportedCity[];
+  let nearestCity: SupportedCity = 'Colombo';
+  let minDistance = Infinity;
+
+  for (const city of cities) {
+    const cityCoords = CITY_CENTERS[city];
+    const dist = distanceKm(coords, cityCoords);
+    if (dist < minDistance) {
+      minDistance = dist;
+      nearestCity = city;
+    }
+  }
+
+  return {
+    city: nearestCity,
+    distanceKm: parseFloat(minDistance.toFixed(1)),
+    inCoverage: minDistance <= MAX_SERVICE_DISTANCE_KM,
+  };
 }
 
 // Apply the agreed availability and radius rules to worker candidates from a query.
