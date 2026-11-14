@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { Action, Card, Field, Page, Status } from '../../Bhashitha/Design/Primitives';
 import { palette } from '../../Bhashitha/Design/theme';
+import { useAuth } from './AuthContext';
 
 type Confirmation = Awaited<ReturnType<typeof signInWithPhoneNumber>>;
 
@@ -17,6 +18,7 @@ function normalizePhone(input: string): string {
 // Separate phone entry and six-digit confirmation from profile onboarding.
 export default function PhoneScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const { signInDemoClient, signInDemoWorker } = useAuth();
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
@@ -85,6 +87,15 @@ export default function PhoneScreen() {
         <Action label="Verify and continue" onPress={() => { void confirmCode(); }} busy={busy} />
       </> : null}
     </Card>
+    {signInDemoClient && signInDemoWorker ? (
+      <Card title="Quick Demo Sign-In (Web Preview)">
+        <Text style={{ color: palette.muted, fontSize: 13, marginBottom: 8 }}>
+          Skip SMS verification for immediate testing:
+        </Text>
+        <Action label="Sign in as Client (Kamal)" secondary onPress={() => { signInDemoClient(); }} />
+        <Action label="Sign in as Worker (Sunil)" secondary onPress={() => { signInDemoWorker(); }} />
+      </Card>
+    ) : null}
     {message ? <Status message={message} error={error} /> : null}
   </Page>;
 }
