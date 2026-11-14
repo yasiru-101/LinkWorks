@@ -31,6 +31,7 @@ function ProtectedStack() {
       <Stack.Screen name="post-job" options={{ presentation: 'modal' }} />
       <Stack.Screen name="job/[id]" />
       <Stack.Screen name="worker/[id]" />
+      <Stack.Screen name="chat/[id]" />
     </Stack.Protected>
     <Stack.Screen name="terms" />
   </Stack>;

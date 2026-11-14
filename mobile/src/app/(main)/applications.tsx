@@ -1,4 +1,2 @@
-import PlaceholderScreen from '../../../../Bhashitha/Navigation/PlaceholderScreen';
-
-// Applications is reserved for the Phase 3 quote flow.
-export default function ApplicationsRoute() { return <PlaceholderScreen title="Applications" nextPhase={3} />; }
+// Applications route wiring to Thimanya's worker applications and quotes tracker.
+export { default } from '../../../../Thimanya/Applications/MyApplicationsScreen';
