@@ -18,7 +18,20 @@ function normalizePhone(input: string): string {
 // Separate phone entry and six-digit confirmation from profile onboarding.
 export default function PhoneScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
-  const { signInDemoClient, signInDemoWorker } = useAuth();
+  const { user, profile, workerReady, signInDemoClient, signInDemoWorker } = useAuth();
+
+  // Automatically navigate into the application as soon as user and profile are loaded.
+  useEffect(() => {
+    if (user && profile) {
+      if (profile.isWorker && !workerReady) {
+        router.replace('/worker-setup');
+      } else {
+        router.replace(profile.activeRole === 'worker' ? '/(main)/feed' : '/(main)/home');
+      }
+    } else if (user && !profile) {
+      router.replace('/setup-profile');
+    }
+  }, [user, profile, workerReady]);
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
@@ -110,8 +123,22 @@ export default function PhoneScreen() {
         <Text style={{ color: palette.muted, fontSize: 13, marginBottom: 8 }}>
           Skip SMS verification for immediate testing:
         </Text>
-        <Action label="Sign in as Client (Kamal)" secondary onPress={() => { signInDemoClient(); }} />
-        <Action label="Sign in as Worker (Sunil)" secondary onPress={() => { signInDemoWorker(); }} />
+        <Action
+          label="Sign in as Client (Kamal)"
+          secondary
+          onPress={() => {
+            signInDemoClient();
+            router.replace('/(main)/home');
+          }}
+        />
+        <Action
+          label="Sign in as Worker (Sunil)"
+          secondary
+          onPress={() => {
+            signInDemoWorker();
+            router.replace('/(main)/feed');
+          }}
+        />
       </Card>
     ) : null}
     {message ? <Status message={message} error={error} /> : null}

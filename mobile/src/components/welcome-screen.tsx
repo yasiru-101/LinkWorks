@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Image,
   Platform,
@@ -21,7 +21,20 @@ const statusIcons = require('../../assets/images/login/status-icons.png');
 
 export default function WelcomeScreen() {
   const { width } = useWindowDimensions();
-  const { signInDemoClient, signInDemoWorker } = useAuth();
+  const { user, profile, workerReady, signInDemoClient, signInDemoWorker } = useAuth();
+
+  // Redirect to main tabs as soon as user profile is authenticated
+  useEffect(() => {
+    if (user && profile) {
+      if (profile.isWorker && !workerReady) {
+        router.replace('/worker-setup');
+      } else {
+        router.replace(profile.activeRole === 'worker' ? '/(main)/feed' : '/(main)/home');
+      }
+    } else if (user && !profile) {
+      router.replace('/setup-profile');
+    }
+  }, [user, profile, workerReady]);
   const [frameWidth, setFrameWidth] = useState(Math.min(width, 390));
   const illustrationSectionHeight = (frameWidth * 360) / 390;
 
@@ -82,13 +95,19 @@ export default function WelcomeScreen() {
                 <View style={styles.demoRow}>
                   <Pressable
                     accessibilityRole="button"
-                    onPress={() => signInDemoClient()}
+                    onPress={() => {
+                      signInDemoClient();
+                      router.replace('/(main)/home');
+                    }}
                     style={({ pressed }) => [styles.demoBtn, pressed && styles.pressed]}>
                     <Text style={styles.demoBtnText}>Client (Kamal)</Text>
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
-                    onPress={() => signInDemoWorker()}
+                    onPress={() => {
+                      signInDemoWorker();
+                      router.replace('/(main)/feed');
+                    }}
                     style={({ pressed }) => [styles.demoBtn, pressed && styles.pressed]}>
                     <Text style={styles.demoBtnText}>Worker (Sunil)</Text>
                   </Pressable>
