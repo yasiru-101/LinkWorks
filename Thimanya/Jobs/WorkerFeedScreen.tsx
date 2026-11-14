@@ -12,12 +12,23 @@ import { distanceKm, type SupportedCity } from '../../Pasindu/Discovery/geo';
 import { useSearchCenter } from '../../Pasindu/Discovery/search-center';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
 
-const RADIUS_OPTIONS = [10, 15, 25, 50];
+const RADIUS_OPTIONS = [5, 10, 15, 25, 50];
 
 // Main Worker Feed screen showing nearby open jobs matching the worker's trade skills.
 export default function WorkerFeedScreen() {
   const { user } = useAuth();
-  const { city, lat, lng, radiusKm, setCity, setRadiusKm } = useSearchCenter();
+  const {
+    city,
+    lat,
+    lng,
+    radiusKm,
+    isGpsActive,
+    isLocating,
+    isOutOfCoverage,
+    requestDeviceLocation,
+    setCity,
+    setRadiusKm,
+  } = useSearchCenter();
 
   const [workerProfile, setWorkerProfile] = useState<WorkerProfile | null>(null);
   const [jobs, setJobs] = useState<Array<Job & { id: string; distanceKm: number }>>([]);
@@ -68,24 +79,34 @@ export default function WorkerFeedScreen() {
       }
 
       const centerCoords = { lat, lng };
-      const workerSkills = workerProfile?.skills.map((s) => s.toLowerCase()) ?? [];
+      const workerSkills = workerProfile?.skills ?? ['Plumbing'];
+      const effectiveRadius = Math.min(radiusKm, workerProfile?.serviceRadiusKm ?? 50);
 
-      // Filter by skill match and distance.
       const matched = list
         .filter((job) => {
-          if (!workerSkills.length) return true;
-          return workerSkills.includes(job.categoryId.toLowerCase());
+          // 1. Skill match: job's category must be among the worker's registered skills
+          const skillMatch = workerSkills.some(
+            (skill) => skill.toLowerCase() === job.categoryId.toLowerCase()
+          );
+          if (!skillMatch) return false;
+
+          // 2. Distance match: job must be within search/service radius
+          const jobCoords = job.geo ?? { lat: 6.9271, lng: 79.8612 };
+          const dist = distanceKm(centerCoords, jobCoords);
+          return dist <= effectiveRadius;
         })
         .map((job) => {
-          const distance = distanceKm(centerCoords, job.geo);
-          return { ...job, distanceKm: distance };
+          const jobCoords = job.geo ?? { lat: 6.9271, lng: 79.8612 };
+          return {
+            ...job,
+            distanceKm: distanceKm(centerCoords, jobCoords),
+          };
         })
-        .filter((job) => job.distanceKm <= radiusKm)
         .sort((a, b) => a.distanceKm - b.distanceKm);
 
       setJobs(matched);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load job feed.');
+      setError(err instanceof Error ? err.message : 'Could not load matching jobs.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -97,15 +118,19 @@ export default function WorkerFeedScreen() {
   }, [loadWorkerProfile]);
 
   useEffect(() => {
-    void loadMatchingJobs();
-  }, [loadMatchingJobs]);
+    if (workerProfile) {
+      void loadMatchingJobs();
+    }
+  }, [workerProfile, loadMatchingJobs]);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    void loadMatchingJobs();
+    if (isGpsActive) {
+      await requestDeviceLocation(true);
+    }
+    await Promise.all([loadWorkerProfile(), loadMatchingJobs()]);
+    setRefreshing(false);
   };
-
-  const skillsLabel = workerProfile?.skills?.join(', ') || 'All Trades';
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -113,32 +138,56 @@ export default function WorkerFeedScreen() {
         contentContainerStyle={styles.container}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Header */}
+        {/* Top Header Bar */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.eyebrow}>WORKER DISCOVERY</Text>
-            <Text style={styles.heading}>Job Feed</Text>
+            <Text style={styles.eyebrow}>AVAILABLE WORK</Text>
+            <Text style={styles.heading}>Nearby Jobs</Text>
           </View>
+
+          {/* Current City / GPS Pill */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Active city ${city}. Tap to change.`}
             onPress={() => setCityModalVisible(true)}
-            style={styles.cityPill}
+            style={[styles.cityPill, isGpsActive && styles.cityPillGps]}
           >
-            <Text style={styles.cityIcon}>📍</Text>
-            <Text style={styles.cityText}>{city}</Text>
+            <View style={[styles.statusDot, isGpsActive ? styles.dotGps : styles.dotManual]} />
+            <Text style={styles.cityText}>
+              {isLocating ? 'Locating…' : isGpsActive ? `GPS: ${city}` : city}
+            </Text>
           </Pressable>
         </View>
 
-        {/* Worker Trade Filter Banner */}
+        {/* Out of Coverage Warning */}
+        {isOutOfCoverage ? (
+          <View style={styles.coverageNoticeCard}>
+            <Text style={styles.coverageNoticeTitle}>🚧 We're not in your area yet!</Text>
+            <Text style={styles.coverageNoticeBody}>
+              LinkWorks has not launched job matching in your current GPS area yet. Please select one of our supported cities to see available work.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setCityModalVisible(true)}
+              style={styles.coverageNoticeButton}
+            >
+              <Text style={styles.coverageNoticeButtonText}>📍 Select a Supported City</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {/* Worker Trade & Skills Banner */}
         <View style={styles.skillsBanner}>
-          <Text style={styles.skillsBannerTitle}>Matching your trades:</Text>
-          <Text style={styles.skillsBannerSubtitle}>{skillsLabel}</Text>
+          <Text style={styles.skillsBannerTitle}>
+            Showing jobs for: {workerProfile?.skills.join(', ') || 'Your Trade'}
+          </Text>
+          <Text style={styles.skillsBannerSubtitle}>
+            Within {radiusKm} km • Quoted in integer LKR
+          </Text>
         </View>
 
-        {/* Radius Filter */}
+        {/* Radius Filter Chips */}
         <View style={styles.radiusRow}>
-          <Text style={styles.radiusLabel}>Search Radius:</Text>
+          <Text style={styles.radiusLabel}>Radius:</Text>
           {RADIUS_OPTIONS.map((r) => {
             const isSelected = radiusKm === r;
             return (
@@ -156,32 +205,34 @@ export default function WorkerFeedScreen() {
           })}
         </View>
 
-        {/* Results Header */}
+        {/* Results Count & Location Subtitle */}
         <View style={styles.resultsHeader}>
-          <Text style={styles.resultsTitle}>Open Jobs ({jobs.length})</Text>
+          <Text style={styles.resultsTitle}>
+            Open Jobs ({jobs.length})
+          </Text>
           <Text style={styles.resultsLocation}>
-            within {radiusKm} km of {city}
+            {isGpsActive ? `Near your GPS location (${city})` : `within ${radiusKm} km of ${city}`}
           </Text>
         </View>
 
-        {/* Jobs List / State */}
+        {/* List of Jobs or States */}
         {loading ? (
-          <View style={styles.stateBox}>
+          <View style={styles.stateContainer}>
             <ActivityIndicator size="large" color={palette.primary} />
-            <Text style={styles.stateText}>Locating matching jobs nearby…</Text>
+            <Text style={styles.stateText}>Finding jobs matching your trade…</Text>
           </View>
         ) : error ? (
-          <View style={styles.stateBox}>
+          <View style={styles.stateContainer}>
             <Text style={styles.errorText}>{error}</Text>
-            <Pressable onPress={loadMatchingJobs} style={styles.retryButton}>
+            <Pressable onPress={() => void loadMatchingJobs()} style={styles.retryButton}>
               <Text style={styles.retryText}>Retry</Text>
             </Pressable>
           </View>
         ) : jobs.length === 0 ? (
-          <View style={styles.stateBox}>
-            <Text style={styles.emptyTitle}>No Matching Jobs Right Now</Text>
+          <View style={styles.stateContainer}>
+            <Text style={styles.emptyTitle}>No matching jobs nearby</Text>
             <Text style={styles.stateText}>
-              There are currently no open {skillsLabel} jobs within {radiusKm} km of {city}. Expand your search radius or check back soon!
+              There are currently no open {workerProfile?.skills.join('/')} jobs within {radiusKm} km of {city}.
             </Text>
             <Pressable onPress={() => setRadiusKm(50)} style={styles.expandButton}>
               <Text style={styles.expandText}>Expand search to 50 km</Text>
@@ -199,10 +250,14 @@ export default function WorkerFeedScreen() {
         )}
       </ScrollView>
 
+      {/* City Switcher Modal with GPS option */}
       <CitySelectorModal
         visible={cityModalVisible}
         currentCity={city}
         onSelectCity={(newCity: SupportedCity) => setCity(newCity)}
+        onUseGps={async () => {
+          await requestDeviceLocation(true);
+        }}
         onClose={() => setCityModalVisible(false)}
       />
     </SafeAreaView>
@@ -240,7 +295,7 @@ const styles = StyleSheet.create({
   cityPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     backgroundColor: palette.surface,
     paddingHorizontal: 12,
     paddingVertical: 7,
@@ -248,30 +303,73 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
   },
-  cityIcon: {
-    fontSize: 14,
+  cityPillGps: {
+    borderColor: '#86efac',
+    backgroundColor: '#f0fdf4',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dotGps: {
+    backgroundColor: '#059669',
+  },
+  dotManual: {
+    backgroundColor: '#9ca3af',
   },
   cityText: {
     color: palette.heading,
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  coverageNoticeCard: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 14,
+    padding: spacing.md,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  coverageNoticeTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#92400e',
+  },
+  coverageNoticeBody: {
+    fontSize: 13,
+    color: '#78350f',
+    lineHeight: 18,
+  },
+  coverageNoticeButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#d97706',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  coverageNoticeButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
     fontWeight: '700',
   },
   skillsBanner: {
-    backgroundColor: '#e6f1ec',
-    borderRadius: 12,
+    backgroundColor: '#e6f7ef',
+    borderRadius: 14,
     padding: spacing.md,
-    gap: 2,
+    borderWidth: 1,
+    borderColor: '#b2e8d0',
   },
   skillsBannerTitle: {
-    color: '#17644b',
-    fontSize: 12,
+    color: palette.primary,
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 0.5,
   },
   skillsBannerSubtitle: {
-    color: palette.heading,
-    fontSize: 15,
-    fontWeight: '800',
+    color: palette.muted,
+    fontSize: 12,
+    marginTop: 2,
   },
   radiusRow: {
     flexDirection: 'row',
@@ -320,12 +418,12 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 12,
   },
-  stateBox: {
-    backgroundColor: palette.surface,
-    borderRadius: 16,
+  stateContainer: {
     padding: spacing.xl,
     alignItems: 'center',
     gap: spacing.sm,
+    backgroundColor: palette.surface,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: palette.border,
     marginVertical: spacing.md,
@@ -334,7 +432,6 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 14,
     textAlign: 'center',
-    lineHeight: 20,
   },
   emptyTitle: {
     color: palette.heading,

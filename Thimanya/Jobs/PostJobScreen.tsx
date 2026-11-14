@@ -1,10 +1,11 @@
 import { addDoc, collection, getFirestore, serverTimestamp } from '@react-native-firebase/firestore';
+import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Action, Card, Field, Page, Status } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
-import { CITY_CENTERS, geohashForPoint, type SupportedCity } from '../../Pasindu/Discovery/geo';
+import { CITY_CENTERS, findNearestSupportedCity, geohashForPoint, type SupportedCity } from '../../Pasindu/Discovery/geo';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { validateOpenJob } from '../JobContracts/validation';
 
@@ -14,12 +15,12 @@ const CATEGORIES = [
   'Electrical',
   'Masonry',
   'Painting',
-  'Gardening',
   'AC Repair',
   'Roofing',
+  'Cleaning',
 ] as const;
 
-// Screen for clients to post a new skilled-trade job with budget and location.
+// Screen for clients to post a new skilled-trade job with budget and live GPS or city location.
 export default function PostJobScreen() {
   const { user, profile } = useAuth();
   const params = useLocalSearchParams<{ prefillCategory?: string; workerName?: string }>();
@@ -38,6 +39,37 @@ export default function PostJobScreen() {
   const [preferredDate, setPreferredDate] = useState('Within 3 days');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // Live GPS state via Fused Location Provider
+  const [useGpsCoords, setUseGpsCoords] = useState(false);
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locatingGps, setLocatingGps] = useState(false);
+
+  // Acquire high-accuracy device coordinates via Fused Location Provider client
+  async function detectGps() {
+    try {
+      setLocatingGps(true);
+      setError('');
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Location permission denied. Please select a city manually.');
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setGpsCoords(coords);
+      setUseGpsCoords(true);
+
+      const match = findNearestSupportedCity(coords);
+      setCity(match.city);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not detect device GPS.');
+    } finally {
+      setLocatingGps(false);
+    }
+  }
 
   // Validate form inputs and submit new open job document to Firestore.
   async function submitJob() {
@@ -65,13 +97,14 @@ export default function PostJobScreen() {
 
     const addressText = addressDetails.trim()
       ? `${addressDetails.trim()}, ${city}`
-      : `${city} city`;
+      : `${city} area`;
 
-    const cityCoords = CITY_CENTERS[city];
+    // Use live GPS coordinates if captured; otherwise fall back to selected city center
+    const targetCoords = (useGpsCoords && gpsCoords) ? gpsCoords : CITY_CENTERS[city];
     const geo = {
-      lat: cityCoords.lat,
-      lng: cityCoords.lng,
-      geohash: geohashForPoint(cityCoords.lat, cityCoords.lng),
+      lat: targetCoords.lat,
+      lng: targetCoords.lng,
+      geohash: geohashForPoint(targetCoords.lat, targetCoords.lng),
     };
 
     try {
@@ -87,6 +120,8 @@ export default function PostJobScreen() {
         budgetMinLkr,
         budgetMaxLkr,
         geo,
+        location: { lat: geo.lat, lng: geo.lng },
+        city,
         addressText,
         preferredDate,
         status: 'open',
@@ -117,7 +152,7 @@ export default function PostJobScreen() {
       <Card title="Job Details">
         <Field
           label="Job Title"
-          placeholder="e.g. Repair leaking kitchen drain pipe"
+          placeholder="e.g. Repair leaking kitchen sink pipe"
           value={title}
           onChangeText={setTitle}
         />
@@ -133,24 +168,26 @@ export default function PostJobScreen() {
                 onPress={() => setCategory(cat)}
                 style={[styles.chip, isSelected && styles.selectedChip]}
               >
-                <Text style={[styles.chipText, isSelected && styles.selectedChipText]}>{cat}</Text>
+                <Text style={[styles.chipText, isSelected && styles.selectedChipText]}>
+                  {cat}
+                </Text>
               </Pressable>
             );
           })}
         </View>
 
         <Field
-          label="Detailed Description"
+          label="Description &amp; Requirements"
+          placeholder="Describe the issue, required tools/materials, and job scope in detail…"
           multiline
           numberOfLines={4}
-          placeholder="Describe the issue, work needed, and any materials on site…"
           value={description}
           onChangeText={setDescription}
         />
       </Card>
 
-      <Card title="Budget & Timeline">
-        <View style={styles.budgetRow}>
+      <Card title="Budget &amp; Schedule">
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
           <View style={{ flex: 1 }}>
             <Field
               label="Min Budget (LKR)"
@@ -177,7 +214,22 @@ export default function PostJobScreen() {
         />
       </Card>
 
-      <Card title="Location">
+      <Card title="Job Location">
+        {/* GPS Capture Button */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => { void detectGps(); }}
+          style={[styles.gpsDetectButton, useGpsCoords && styles.gpsDetectButtonActive]}
+        >
+          <Text style={[styles.gpsDetectText, useGpsCoords && styles.gpsDetectTextActive]}>
+            {locatingGps
+              ? 'Acquiring GPS fix via Fused Location…'
+              : useGpsCoords
+              ? `✓ Pinned to Device GPS (${gpsCoords?.lat.toFixed(4)}, ${gpsCoords?.lng.toFixed(4)})`
+              : '📍 Pin Job to Current Device GPS'}
+          </Text>
+        </Pressable>
+
         <Text style={styles.sectionLabel}>Service City</Text>
         <View style={styles.chipsWrap}>
           {(Object.keys(CITY_CENTERS) as SupportedCity[]).map((c) => {
@@ -186,7 +238,10 @@ export default function PostJobScreen() {
               <Pressable
                 key={c}
                 accessibilityRole="button"
-                onPress={() => setCity(c)}
+                onPress={() => {
+                  setCity(c);
+                  setUseGpsCoords(false);
+                }}
                 style={[styles.chip, isSelected && styles.selectedChip]}
               >
                 <Text style={[styles.chipText, isSelected && styles.selectedChipText]}>{c}</Text>
@@ -241,31 +296,51 @@ const styles = StyleSheet.create({
   chipsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: spacing.xs,
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
   },
   chip: {
-    backgroundColor: palette.background,
-    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: '#f4f4f5',
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: '#e4e4e7',
   },
   selectedChip: {
     backgroundColor: palette.primary,
     borderColor: palette.primary,
   },
   chipText: {
-    color: palette.muted,
     fontSize: 13,
+    color: palette.heading,
     fontWeight: '600',
   },
   selectedChipText: {
     color: '#ffffff',
   },
-  budgetRow: {
+  gpsDetectButton: {
     flexDirection: 'row',
-    gap: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0fdf4',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    marginBottom: spacing.sm,
+  },
+  gpsDetectButtonActive: {
+    backgroundColor: '#dcfce7',
+    borderColor: '#86efac',
+  },
+  gpsDetectText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  gpsDetectTextActive: {
+    color: '#15803d',
   },
 });
