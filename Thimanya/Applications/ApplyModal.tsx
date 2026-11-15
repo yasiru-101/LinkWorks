@@ -1,14 +1,14 @@
-import { doc, getFirestore, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
+import { doc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Action, Card, Field, Status } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import type { Job } from '../../mobile/src/types/domain';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
+import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 import { validateQuote } from '../JobContracts/validation';
-import { savePersistentApplication } from '../Jobs/job-storage';
 
-// Modal dialog for workers to submit a priced quote and pitch for an open job.
+// Modal dialog for workers to submit a priced quote and pitch for an open job directly to Cloud Firestore.
 export function ApplyModal({
   visible,
   job,
@@ -28,8 +28,7 @@ export function ApplyModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  // Validate quote input and submit application to local flash storage and Firestore subcollection.
-  // This ensures the worker's quote persists across restarts and displays immediately to the client.
+  // Validate quote input and submit application directly to Firestore subcollection.
   async function submitQuote() {
     if (!user) {
       setError('Please sign in to submit a quote.');
@@ -51,36 +50,17 @@ export function ApplyModal({
       setBusy(true);
       setError('');
 
-      // Create enriched application object with tradesperson details
-      const newApp = {
+      // Write quote directly to Cloud Firestore subcollection jobs/{jobId}/applications/{workerId}
+      const db = getSafeFirestore();
+      const appRef = doc(db, 'jobs', job.id, 'applications', user.uid);
+      await setDoc(appRef, {
         workerId: user.uid,
-        workerName: profile?.name || 'Verified Tradesperson',
-        workerPhone: profile?.phone || '+94779876543',
         quotedPriceLkr: priceLkr,
         message: message.trim(),
         status: 'submitted',
-        ratingAvg: 4.9,
-        ratingCount: 16,
-        distanceKm: 2.3,
-      };
-
-      // 1. Persist quote to on-device flash storage immediately
-      await savePersistentApplication(job.id, newApp);
-
-      // 2. Sync quote to Cloud Firestore subcollection
-      try {
-        const appRef = doc(getFirestore(), 'jobs', job.id, 'applications', user.uid);
-        await setDoc(appRef, {
-          workerId: user.uid,
-          quotedPriceLkr: priceLkr,
-          message: message.trim(),
-          status: 'submitted',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      } catch {
-        // Fall back gracefully in preview/offline mode
-      }
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
 
       onSuccess?.();
       onClose();

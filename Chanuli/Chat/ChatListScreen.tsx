@@ -19,33 +19,7 @@ export type ChatListItem = {
   unreadCount: number;
 };
 
-// Fallback demo chats matching the LinkWorks mockup.
-const DEMO_CHATS: ChatListItem[] = [
-  {
-    id: 'job-colombo-kitchen-pipe',
-    jobId: 'job-colombo-kitchen-pipe',
-    jobTitle: 'Fix Main Water Leak & Pressure Pump',
-    jobStatus: 'assigned',
-    lastMessage: 'Here is the high-pressure brass valve I will be installing:',
-    otherPartyName: 'Sunil Perera',
-    otherPartyRole: 'Worker',
-    unreadCount: 1,
-    lastAt: '10:22 AM',
-  },
-  {
-    id: 'job-moratuwa-door-frame',
-    jobId: 'job-moratuwa-door-frame',
-    jobTitle: 'Install 2 solid teak door frames',
-    jobStatus: 'in_progress',
-    lastMessage: 'Door frame leveling is completed. Starting hinge fittings.',
-    otherPartyName: 'Pradeep Silva',
-    otherPartyRole: 'Worker',
-    unreadCount: 0,
-    lastAt: 'Yesterday',
-  },
-];
-
-// Screen listing all active job-linked conversations for the signed-in user.
+// Screen listing all active job-linked conversations for the signed-in user powered by Cloud Firestore.
 export default function ChatListScreen() {
   const { user } = useAuth();
   const [chats, setChats] = useState<ChatListItem[]>([]);
@@ -54,44 +28,31 @@ export default function ChatListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load chat conversations from Firestore.
+  // Load chat conversations directly from Cloud Firestore.
   const loadChats = useCallback(async () => {
     if (!user) return;
     try {
       setError(null);
-      let list: ChatListItem[] = [];
-
-      try {
-        const db = getSafeFirestore();
-        const snapshot = await getDocs(
-          query(collection(db, 'chats'), where('participants', 'array-contains', user.uid))
-        );
-        if (!snapshot.empty) {
-          list = snapshot.docs.map((d) => {
-            const data = d.data();
-            const isClient = data.participants[0] === user.uid;
-            const otherInfo = isClient ? data.workerInfo : data.clientInfo;
-            return {
-              id: d.id,
-              jobId: data.jobId || d.id,
-              jobTitle: data.jobTitle || 'Job Chat',
-              jobStatus: data.jobStatus || 'assigned',
-              lastMessage: data.lastMessage || 'Direct messaging opened.',
-              otherPartyName: otherInfo?.name || (isClient ? 'Sunil Perera' : 'Kamal Perera'),
-              otherPartyRole: isClient ? 'Worker' : 'Client',
-              unreadCount: data.unread?.[user.uid] || 0,
-              lastAt: 'Recent',
-            };
-          });
-        }
-      } catch {
-        // Fall back to demo chats in preview mode
-      }
-
-      if (list.length === 0) {
-        list = DEMO_CHATS;
-      }
-
+      const db = getSafeFirestore();
+      const snapshot = await getDocs(
+        query(collection(db, 'chats'), where('participants', 'array-contains', user.uid))
+      );
+      const list: ChatListItem[] = snapshot.docs.map((d) => {
+        const data = d.data();
+        const isClient = data.clientId ? data.clientId === user.uid : data.participants?.[0] === user.uid;
+        const otherInfo = isClient ? data.workerInfo : data.clientInfo;
+        return {
+          id: d.id,
+          jobId: data.jobId || d.id,
+          jobTitle: data.jobTitle || (data.type === 'direct' ? 'Direct Consultation' : 'Job Chat'),
+          jobStatus: data.jobStatus || (data.type === 'direct' ? 'inquiry' : 'assigned'),
+          lastMessage: data.lastMessage || 'Direct messaging opened.',
+          otherPartyName: otherInfo?.name || (isClient ? 'Tradesperson' : 'Client'),
+          otherPartyRole: isClient ? 'Worker' : 'Client',
+          unreadCount: data.unread?.[user.uid] || 0,
+          lastAt: 'Recent',
+        };
+      });
       setChats(list);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load chats.');
@@ -163,7 +124,7 @@ export default function ChatListScreen() {
             <Text style={styles.emptyIcon}>💬</Text>
             <Text style={styles.emptyTitle}>No Active Conversations</Text>
             <Text style={styles.stateText}>
-              Job chat unlocks automatically as soon as a quote is accepted and a worker is assigned.
+              Direct chats with tradespeople or assigned job messages will appear here.
             </Text>
           </View>
         ) : (
@@ -191,7 +152,8 @@ export default function ChatListScreen() {
 
                   <View style={styles.jobBadgeRow}>
                     <Text style={styles.jobBadge} numberOfLines={1}>
-                      🛠️ {chat.jobTitle}
+                      {chat.id.startsWith('direct_') ? '💬 ' : '🛠️ '}
+                      {chat.jobTitle}
                     </Text>
                     <View style={styles.statusPill}>
                       <Text style={styles.statusPillText}>
@@ -228,7 +190,7 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 40,
+    paddingBottom: 140,
     gap: 12,
     backgroundColor: '#ffffff',
   },

@@ -21,7 +21,7 @@ const statusIcons = require('../../assets/images/login/status-icons.png');
 
 export default function WelcomeScreen() {
   const { width } = useWindowDimensions();
-  const { user, profile, workerReady, signInDemoClient, signInDemoWorker, signOut } = useAuth();
+  const { user, profile, workerReady, signOut } = useAuth();
 
   // Redirect to main tabs as soon as user profile is authenticated
   useEffect(() => {
@@ -35,6 +35,7 @@ export default function WelcomeScreen() {
       router.replace('/setup-profile');
     }
   }, [user, profile, workerReady]);
+
   const [frameWidth, setFrameWidth] = useState(Math.min(width, 390));
   const illustrationSectionHeight = (frameWidth * 360) / 390;
 
@@ -98,32 +99,6 @@ export default function WelcomeScreen() {
               style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
               <Text style={styles.secondaryLabel}>Log In</Text>
             </Pressable>
-
-            {signInDemoClient && signInDemoWorker ? (
-              <View style={styles.demoBox}>
-                <Text style={styles.demoHint}>Or explore instantly without SMS:</Text>
-                <View style={styles.demoRow}>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      signInDemoClient();
-                      router.replace('/(main)/home');
-                    }}
-                    style={({ pressed }) => [styles.demoBtn, pressed && styles.pressed]}>
-                    <Text style={styles.demoBtnText}>Client (Kamal)</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      signInDemoWorker();
-                      router.replace('/(main)/feed');
-                    }}
-                    style={({ pressed }) => [styles.demoBtn, pressed && styles.pressed]}>
-                    <Text style={styles.demoBtnText}>Worker (Sunil)</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : null}
 
             <Text style={styles.terms}>
               By continuing, you agree to LinkWorks{' '}
@@ -241,38 +216,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 25,
   },
   termsLink: { color: '#034e3f', fontWeight: '600' },
-  demoBox: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    gap: 8,
-    alignItems: 'center',
-  },
-  demoHint: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '600',
-  },
-  demoRow: {
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-  },
-  demoBtn: {
-    flex: 1,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#e6f1ec',
-    borderWidth: 1,
-    borderColor: '#034e3f',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  demoBtnText: {
-    color: '#034e3f',
-    fontSize: 13,
-    fontWeight: '700',
-  },
   pressed: { opacity: 0.85 },
 });

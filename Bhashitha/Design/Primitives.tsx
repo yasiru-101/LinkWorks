@@ -30,9 +30,9 @@ export function Status({ message, error = false }: { message: string; error?: bo
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
-  page: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xl },
+  page: { padding: spacing.lg, gap: spacing.md, paddingBottom: 140 },
   card: { backgroundColor: palette.surface, borderRadius: 18, padding: spacing.lg, gap: spacing.md, borderWidth: 1, borderColor: palette.border },
-  cardTitle: { color: palette.heading, fontSize: 20, fontWeight: '700', fontFamily: 'Plus Jakarta Sans' },
+  cardTitle: { color: palette.heading, fontSize: 20, fontWeight: '700', paddingRight: 6 },
   field: { gap: spacing.xs },
   label: { color: palette.heading, fontSize: 14, fontWeight: '600' },
   input: { borderWidth: 1, borderColor: palette.border, borderRadius: 12, padding: 13, fontSize: 16, color: palette.heading, backgroundColor: '#fff' },
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   primary: { backgroundColor: palette.primary },
   secondary: { borderColor: palette.primary, borderWidth: 1, backgroundColor: palette.surface },
   disabled: { opacity: 0.5 },
-  actionText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  actionText: { color: '#fff', fontSize: 15, fontWeight: '700', paddingHorizontal: 4 },
   secondaryText: { color: palette.primary },
   status: { color: palette.muted, fontSize: 14, lineHeight: 20 },
   error: { color: palette.danger },

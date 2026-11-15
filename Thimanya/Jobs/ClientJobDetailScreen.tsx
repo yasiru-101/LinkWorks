@@ -1,9 +1,9 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDocFromServer,
   getDocs,
-  getFirestore,
   runTransaction,
   serverTimestamp,
   updateDoc,
@@ -25,13 +25,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { ReviewModal } from '../../Bhashitha/Reviews/ReviewModal';
-import { SEED_JOBS, SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
-import type { Job, JobApplication, JobStatus } from '../../mobile/src/types/domain';
+import type { Job, JobApplication, JobStatus, WorkerProfile } from '../../mobile/src/types/domain';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 import { ApplyModal } from '../Applications/ApplyModal';
 import { canTransitionJob } from '../JobContracts/validation';
-import { loadPersistentApplications, loadPersistentJobs, removePersistentJob } from './job-storage';
 
 const arrow = require('../../mobile/assets/images/login/arrow-right.png');
 
@@ -43,35 +41,7 @@ type DetailedApplication = JobApplication & {
   distanceKm?: number;
 };
 
-// Fallback demo applications for offline/preview mode matching mockup data.
-const DEMO_JOB_APPLICATIONS: Record<string, DetailedApplication[]> = {
-  'job-colombo-kitchen-pipe': [
-    {
-      workerId: 'worker-colombo-plumber-1',
-      workerName: 'Sunil Perera',
-      workerPhone: '+94779876543',
-      ratingAvg: 4.9,
-      ratingCount: 128,
-      distanceKm: 2.4,
-      quotedPriceLkr: 14500,
-      message: 'I have standard brass valves and high-pressure PVC pipes in my van. Can be at your location in 30 mins to inspect and test.',
-      status: 'submitted',
-    },
-    {
-      workerId: 'worker-moratuwa-carpenter-1',
-      workerName: 'Rohan Fernando',
-      workerPhone: '+94772345678',
-      ratingAvg: 4.7,
-      ratingCount: 45,
-      distanceKm: 5.1,
-      quotedPriceLkr: 16000,
-      message: 'Certified tradesperson with 8 years experience. Can inspect and replace valves with a 6-month repair guarantee.',
-      status: 'submitted',
-    },
-  ],
-};
-
-// High-fidelity Job Details & Quote Comparison Screen matching the mockup.
+// High-fidelity Job Details & Quote Comparison Screen powered purely by Cloud Firestore.
 export default function ClientJobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, profile } = useAuth();
@@ -86,90 +56,55 @@ export default function ClientJobDetailScreen() {
   const [applyModalVisible, setApplyModalVisible] = useState(false);
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
 
-  // Fetch job details and associated quote applications.
+  // Fetch job details and associated quote applications directly from Cloud Firestore.
   const fetchJobAndQuotes = useCallback(async () => {
     if (!id) return;
     try {
       setLoading(true);
       setError('');
-      let currentJob: (Job & { id: string }) | null = null;
+      const db = getSafeFirestore();
 
-      try {
-        const db = getSafeFirestore();
-        const snapshot = await getDocFromServer(doc(db, 'jobs', id));
-        if (snapshot.exists()) {
-          currentJob = { ...(snapshot.data() as Job), id: snapshot.id };
-        }
-      } catch {
-        // Fall back to seed or session dynamic jobs in preview mode
-      }
-
-      if (!currentJob) {
-        const persistent = await loadPersistentJobs();
-        currentJob =
-          persistent.find((j) => j.id === id) ??
-          SEED_JOBS.find((j) => j.id === id) ??
-          null;
-      }
-
-      if (!currentJob) {
+      // 1. Fetch job document
+      const snapshot = await getDocFromServer(doc(db, 'jobs', id));
+      if (!snapshot.exists()) {
         setError('Job not found.');
         return;
       }
+      const currentJob = { ...(snapshot.data() as Job), id: snapshot.id };
       setJob(currentJob);
 
-      // Fetch quote applications for this job.
-      let apps: DetailedApplication[] = [];
-      try {
-        const appsSnap = await getDocs(collection(getFirestore(), 'jobs', id, 'applications'));
-        if (!appsSnap.empty) {
-          apps = appsSnap.docs.map((d) => {
-            const data = d.data() as DetailedApplication;
-            const matched = SEED_WORKERS.find((w) => w.userId === data.workerId);
-            return {
-              ...data,
-              workerName: data.workerName || matched?.displayName || 'Verified Tradesperson',
-              ratingAvg: data.ratingAvg || matched?.ratingAvg || 4.8,
-              ratingCount: data.ratingCount || matched?.ratingCount || 10,
-              distanceKm: data.distanceKm || 2.5,
-            };
-          });
-        }
-      } catch {
-        // Fall back gracefully in preview mode
-      }
-
-      // Check persistent applications saved on device storage
-      try {
-        const persistentApps = await loadPersistentApplications(id);
-        if (persistentApps && persistentApps.length > 0) {
-          const existingIds = new Set(apps.map((a) => a.workerId));
-          for (const pa of persistentApps) {
-            if (!existingIds.has(pa.workerId)) {
-              apps.push(pa as DetailedApplication);
-            }
-          }
-        }
-      } catch {
-        // Fall back gracefully
-      }
-
-      // Only attach demo quotes for the specific pre-seeded mock demo job.
-      // Newly created jobs MUST start with 0 quotes so workers can apply realistically.
-      if (apps.length === 0 && id === 'job-colombo-kitchen-pipe') {
-        apps = DEMO_JOB_APPLICATIONS[id] || [];
+      // 2. Fetch quote applications subcollection
+      const appsSnap = await getDocs(collection(db, 'jobs', id, 'applications'));
+      const apps: DetailedApplication[] = [];
+      for (const d of appsSnap.docs) {
+        const data = d.data() as DetailedApplication;
+        apps.push({
+          ...data,
+          workerId: data.workerId || d.id,
+          workerName: data.workerName || 'Verified Tradesperson',
+          ratingAvg: data.ratingAvg || 0,
+          ratingCount: data.ratingCount || 0,
+        });
       }
       setApplications(apps);
 
-      // If job is assigned, look up worker's public contact info.
+      // 3. If job is assigned, look up worker's public contact info
       if (currentJob.assignedWorkerId) {
-        const matchedWorker = SEED_WORKERS.find((w) => w.userId === currentJob.assignedWorkerId);
-        if (matchedWorker) {
-          setAssignedWorkerName(matchedWorker.displayName);
-          setAssignedWorkerPhone('+94779876543');
-        } else {
-          setAssignedWorkerName('Sunil Perera');
-          setAssignedWorkerPhone('+94779876543');
+        try {
+          const workerSnap = await getDocFromServer(doc(db, 'workerProfiles', currentJob.assignedWorkerId));
+          if (workerSnap.exists()) {
+            const wData = workerSnap.data() as WorkerProfile;
+            setAssignedWorkerName(wData.displayName);
+          }
+          const userSnap = await getDocFromServer(doc(db, 'users', currentJob.assignedWorkerId));
+          if (userSnap.exists()) {
+            const uData = userSnap.data();
+            if (typeof uData?.phone === 'string') {
+              setAssignedWorkerPhone(uData.phone);
+            }
+          }
+        } catch {
+          // Ignore worker lookup failure
         }
       }
     } catch (err) {
@@ -183,10 +118,10 @@ export default function ClientJobDetailScreen() {
     void fetchJobAndQuotes();
   }, [fetchJobAndQuotes]);
 
-  // Atomic operation: accept quote, reject others, assign job, and initialize chat.
+  // Atomic operation: accept quote, assign job, and initialize direct chat in Cloud Firestore.
   async function acceptQuote(quote: DetailedApplication) {
     if (!job || !user) return;
-    if (job.clientId !== user.uid && user.uid !== 'demo-client-1') {
+    if (job.clientId !== user.uid) {
       setError('Only the job client can accept quotes.');
       return;
     }
@@ -195,45 +130,41 @@ export default function ClientJobDetailScreen() {
       setBusy(true);
       setError('');
 
-      try {
-        const firestore = getFirestore();
-        await runTransaction(firestore, async (transaction) => {
-          const jobRef = doc(firestore, 'jobs', job.id);
-          const jobDoc = await transaction.get(jobRef);
-          if (!jobDoc.exists()) throw new Error('Job does not exist.');
+      const firestore = getSafeFirestore();
+      await runTransaction(firestore, async (transaction) => {
+        const jobRef = doc(firestore, 'jobs', job.id);
+        const jobDoc = await transaction.get(jobRef);
+        if (!jobDoc.exists()) throw new Error('Job does not exist.');
 
-          // 1. Update job to assigned
-          transaction.update(jobRef, {
-            status: 'assigned',
-            assignedWorkerId: quote.workerId,
-            acceptedPriceLkr: quote.quotedPriceLkr,
-            updatedAt: serverTimestamp(),
-          });
-
-          // 2. Update chosen application to accepted
-          const chosenAppRef = doc(firestore, 'jobs', job.id, 'applications', quote.workerId);
-          transaction.update(chosenAppRef, {
-            status: 'accepted',
-            updatedAt: serverTimestamp(),
-          });
-
-          // 3. Initialize chat document
-          const chatRef = doc(firestore, 'chats', job.id);
-          transaction.set(chatRef, {
-            jobId: job.id,
-            jobTitle: job.title,
-            jobStatus: 'assigned',
-            participants: [job.clientId, quote.workerId],
-            lastMessage: 'Job assigned! Direct chat and phone contact are now open.',
-            lastAt: serverTimestamp(),
-            unread: { [job.clientId]: 0, [quote.workerId]: 1 },
-            clientInfo: { name: profile?.name || 'Client', phone: profile?.phone || '+94771234567' },
-            workerInfo: { name: quote.workerName || 'Worker', phone: quote.workerPhone || '+94779876543' },
-          });
+        // 1. Update job to assigned
+        transaction.update(jobRef, {
+          status: 'assigned',
+          assignedWorkerId: quote.workerId,
+          acceptedPriceLkr: quote.quotedPriceLkr,
+          updatedAt: serverTimestamp(),
         });
-      } catch {
-        // Preview mode local update
-      }
+
+        // 2. Update chosen application to accepted
+        const chosenAppRef = doc(firestore, 'jobs', job.id, 'applications', quote.workerId);
+        transaction.update(chosenAppRef, {
+          status: 'accepted',
+          updatedAt: serverTimestamp(),
+        });
+
+        // 3. Initialize chat document
+        const chatRef = doc(firestore, 'chats', job.id);
+        transaction.set(chatRef, {
+          jobId: job.id,
+          jobTitle: job.title,
+          jobStatus: 'assigned',
+          participants: [job.clientId, quote.workerId],
+          lastMessage: 'Job assigned! Direct chat and phone contact are now open.',
+          lastAt: serverTimestamp(),
+          unread: { [job.clientId]: 0, [quote.workerId]: 1 },
+          clientInfo: { name: profile?.name || 'Client', phone: profile?.phone || '' },
+          workerInfo: { name: quote.workerName || 'Worker', phone: quote.workerPhone || '' },
+        });
+      });
 
       setJob((prev) =>
         prev
@@ -252,8 +183,8 @@ export default function ClientJobDetailScreen() {
             : { ...app, status: 'rejected' }
         )
       );
-      setAssignedWorkerName(quote.workerName || 'Sunil Perera');
-      setAssignedWorkerPhone(quote.workerPhone || '+94779876543');
+      setAssignedWorkerName(quote.workerName || 'Assigned Tradesperson');
+      setAssignedWorkerPhone(quote.workerPhone || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not accept quote.');
     } finally {
@@ -267,14 +198,10 @@ export default function ClientJobDetailScreen() {
     try {
       setBusy(true);
       setError('');
-      try {
-        await updateDoc(doc(getFirestore(), 'jobs', job.id), {
-          status: 'in_progress',
-          updatedAt: serverTimestamp(),
-        });
-      } catch {
-        // Preview fallback
-      }
+      await updateDoc(doc(getSafeFirestore(), 'jobs', job.id), {
+        status: 'in_progress',
+        updatedAt: serverTimestamp(),
+      });
       setJob((prev) => (prev ? { ...prev, status: 'in_progress' } : null));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not start work.');
@@ -289,14 +216,10 @@ export default function ClientJobDetailScreen() {
     try {
       setBusy(true);
       setError('');
-      try {
-        await updateDoc(doc(getFirestore(), 'jobs', job.id), {
-          status: 'completed',
-          updatedAt: serverTimestamp(),
-        });
-      } catch {
-        // Preview fallback
-      }
+      await updateDoc(doc(getSafeFirestore(), 'jobs', job.id), {
+        status: 'completed',
+        updatedAt: serverTimestamp(),
+      });
       setJob((prev) => (prev ? { ...prev, status: 'completed' } : null));
       setReviewModalVisible(true);
     } catch (err) {
@@ -326,19 +249,19 @@ export default function ClientJobDetailScreen() {
     );
   }
 
-  const isClient = user?.uid === job.clientId || user?.uid === 'demo-client-1' || user?.uid === 'client-demo-1' || profile?.activeRole === 'client';
+  const isClient = user?.uid === job.clientId;
   const isAssignedWorker = user?.uid === job.assignedWorkerId;
   const isParticipant = isClient || isAssignedWorker;
-  const isOwner = user?.uid === job.clientId || (user?.uid === 'client-demo-1' && job.clientId === 'client-demo-1') || isClient;
+  const isOwner = isClient;
 
-  // Permanently delete this job from Cloud Firestore and physical device storage.
+  // Permanently delete this job from Cloud Firestore.
   async function handleDeleteJob() {
     if (!job) return;
 
     const executeDelete = async () => {
       try {
         setBusy(true);
-        await removePersistentJob(job.id);
+        await deleteDoc(doc(getSafeFirestore(), 'jobs', job.id));
         router.replace('/(main)/jobs');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not delete job.');
@@ -353,7 +276,7 @@ export default function ClientJobDetailScreen() {
     } else {
       Alert.alert(
         'Delete Job Post',
-        'Are you sure you want to permanently delete this job post? It will be removed from Cloud Firestore and your device.',
+        'Are you sure you want to permanently delete this job post? It will be removed from Cloud Firestore.',
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Delete', style: 'destructive', onPress: () => void executeDelete() },
@@ -623,8 +546,8 @@ export default function ClientJobDetailScreen() {
       <ReviewModal
         visible={reviewModalVisible}
         jobId={job.id}
-        rateeId={job.assignedWorkerId || 'worker-colombo-plumber-1'}
-        rateeName={assignedWorkerName || 'Sunil Perera'}
+        rateeId={job.assignedWorkerId || ''}
+        rateeName={assignedWorkerName || 'Assigned Tradesperson'}
         onClose={() => setReviewModalVisible(false)}
       />
     </SafeAreaView>

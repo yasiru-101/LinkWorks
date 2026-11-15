@@ -126,13 +126,13 @@ service cloud.firestore {
           && data.updatedAt == request.time;
       }
 
-      allow get, list: if resource.data.status == 'open'
-        || (signedIn() && (resource.data.clientId == request.auth.uid || resource.data.get('assignedWorkerId', '') == request.auth.uid))
-        || resource.data.clientId.size() > 0;
-      allow create: if (
-          (signedIn() && request.resource.data.clientId == request.auth.uid && account(request.auth.uid).isClient == true)
-          || (request.resource.data.clientId is string && request.resource.data.clientId.size() > 0)
-        )
+      allow get, list: if signedIn()
+        && (resource.data.status == 'open'
+          || resource.data.clientId == request.auth.uid
+          || resource.data.get('assignedWorkerId', '') == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.clientId == request.auth.uid
+        && account(request.auth.uid).isClient == true
         && request.resource.data.keys().hasOnly([
           'clientId', 'title', 'description', 'categoryId', 'photos', 'budgetMinLkr',
           'budgetMaxLkr', 'geo', 'addressText', 'preferredDate', 'status',
@@ -233,9 +233,10 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == workerId || resource.data.workerId == request.auth.uid);
     }
 
-    // Phase 3: Real-time chat accessible only to the job's assigned client and worker.
+    // Phase 3: Real-time chat accessible only to the participants.
     match /chats/{chatId} {
-      allow get, list: if signedIn() && request.auth.uid in resource.data.participants;
+      allow get: if signedIn() && (resource == null || request.auth.uid in resource.data.participants);
+      allow list: if signedIn() && request.auth.uid in resource.data.participants;
       allow create: if signedIn()
         && request.auth.uid in request.resource.data.participants
         && request.resource.data.participants.size() == 2;

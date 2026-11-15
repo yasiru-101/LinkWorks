@@ -19,14 +19,11 @@ type WebAuthState = {
   }) => Promise<void>;
   selectRole: (role: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
-  signInDemoClient: () => void;
-  signInDemoWorker: () => void;
-  signInWithPhoneMock?: (phoneNumber: string, isRegister?: boolean) => Promise<void>;
 };
 
 const AuthContext = createContext<WebAuthState | null>(null);
 
-// Interactive provider for web browser testing allowing immediate preview of all client & worker flows.
+// Interactive provider for web browser testing allowing state synchronization across screens.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<WebAuthUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -34,32 +31,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Sign in as a demo client to explore discovery and job posting.
-  function signInDemoClient() {
-    setUser({ uid: 'demo-client-1', phoneNumber: '+94771234567' });
-    setProfile({
-      name: 'Kamal Perera',
-      phone: '+94771234567',
-      city: 'Colombo',
-      isClient: true,
-      isWorker: true,
-      activeRole: 'client',
-    });
-    setWorkerReady(true);
-  }
-
-  // Sign in as a demo worker to explore matching job feeds.
-  function signInDemoWorker() {
-    setUser({ uid: 'worker-colombo-plumber-1', phoneNumber: '+94779876543' });
-    setProfile({
-      name: 'Sunil Shantha',
-      phone: '+94779876543',
-      city: 'Colombo',
-      isClient: true,
-      isWorker: true,
-      activeRole: 'worker',
-    });
-    setWorkerReady(true);
+  // Refresh profile from backend session.
+  async function refreshProfile() {
+    // In web mode, session state is managed via React state and local storage
   }
 
   // Save the user profile and worker profile in memory for web preview and testing.
@@ -103,61 +77,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setWorkerReady(false);
   }
 
-  // Sign in with phone number for mock/presentation in web preview.
-  // For new registrations or unrecognized numbers, profile starts as null to open the profile setup screen.
-  async function signInWithPhoneMock(phoneNumber: string, isRegister = false) {
-    const phoneClean = phoneNumber.replace(/[\s()-]/g, '');
-    const uid = 'user_' + phoneClean.replace('+', '');
-    setUser({ uid, phoneNumber: phoneClean });
-
-    // Explicit registration always requires profile creation
-    if (isRegister) {
-      setProfile(null);
-      setWorkerReady(false);
-      return;
-    }
-
-    // Pre-seeded demo numbers bypass onboarding for quick grading
-    if (phoneClean === '+94779876543') {
-      setProfile({
-        name: 'Sunil Shantha',
-        phone: phoneClean,
-        city: 'Colombo',
-        isClient: true,
-        isWorker: true,
-        activeRole: 'worker',
-      });
-      setWorkerReady(true);
-    } else if (phoneClean === '+94771234567') {
-      setProfile({
-        name: 'Kamal Perera',
-        phone: phoneClean,
-        city: 'Colombo',
-        isClient: true,
-        isWorker: true,
-        activeRole: 'client',
-      });
-      setWorkerReady(true);
-    } else {
-      // Any new phone number starts with profile: null, triggering setup-profile
-      setProfile(null);
-      setWorkerReady(false);
-    }
-  }
-
   const value: WebAuthState = {
     user,
     profile,
     workerReady,
     loading,
     error,
-    refreshProfile: async () => {},
+    refreshProfile,
     saveProfile,
     selectRole,
     signOut,
-    signInDemoClient,
-    signInDemoWorker,
-    signInWithPhoneMock,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

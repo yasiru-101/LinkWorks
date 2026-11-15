@@ -242,7 +242,7 @@ export default function WorkerSetupScreen() {
               >
                 <Text style={styles.tradeIcon}>{trade.icon}</Text>
                 <Text style={[styles.chipText, isSelected && styles.selectedText]}>
-                  {trade.label}
+                  {trade.label}{' '}
                 </Text>
                 {isSelected && <Text style={styles.selectedCheck}>✓</Text>}
               </Pressable>
@@ -329,7 +329,7 @@ export default function WorkerSetupScreen() {
               style={[styles.chip, city === option && styles.selected]}
             >
               <Text style={[styles.chipText, city === option && styles.selectedText]}>
-                📍 {option}
+                📍 {option}{' '}
               </Text>
             </Pressable>
           ))}
@@ -346,7 +346,7 @@ export default function WorkerSetupScreen() {
               style={[styles.chip, radius === km && styles.selected]}
             >
               <Text style={[styles.chipText, radius === km && styles.selectedText]}>
-                {km} km
+                {km} km{' '}
               </Text>
             </Pressable>
           ))}
@@ -471,6 +471,7 @@ const styles = StyleSheet.create({
     color: palette.heading,
     fontSize: 13,
     fontWeight: '600',
+    paddingRight: 6,
   },
   selectedText: {
     color: '#fff',

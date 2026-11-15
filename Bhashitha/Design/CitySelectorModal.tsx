@@ -68,7 +68,7 @@ export function CitySelectorModal({
                   }}
                   style={[styles.cityRow, isSelected && styles.selectedRow]}
                 >
-                  <Text style={[styles.cityName, isSelected && styles.selectedName]}>{city}</Text>
+                  <Text style={[styles.cityName, isSelected && styles.selectedName]}>{city} </Text>
                   {isSelected ? <Text style={styles.checkmark}>✓</Text> : null}
                 </Pressable>
               );
@@ -175,6 +175,7 @@ const styles = StyleSheet.create({
     color: palette.heading,
     fontSize: 15,
     fontWeight: '600',
+    paddingRight: 6,
   },
   selectedName: {
     color: palette.primary,

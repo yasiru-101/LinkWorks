@@ -6,11 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Action } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { JobCard } from '../../Bhashitha/Design/JobCard';
-import { SEED_JOBS } from '../../Bhashitha/Seed/seed-data';
 import type { Job, JobStatus } from '../../mobile/src/types/domain';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
-import { getPersistentJobs, loadPersistentJobs } from './job-storage';
 
 type StatusFilter = 'all' | JobStatus;
 
@@ -31,45 +29,20 @@ export default function MyJobsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load client's posted jobs from on-device flash storage and Cloud Firestore.
+  // Load client's posted jobs directly from Cloud Firestore.
   const loadJobs = useCallback(async () => {
     if (!user) return;
     try {
       setError(null);
-
-      // 1. Load persistent jobs from physical device flash storage
-      const savedJobs = await loadPersistentJobs();
-      let list: Array<Job & { id: string }> = [];
-
-      // 2. Fetch live jobs from Cloud Firestore
-      try {
-        const db = getSafeFirestore();
-        const snapshot = await getDocs(
-          query(collection(db, 'jobs'), where('clientId', '==', user.uid))
-        );
-        if (!snapshot.empty) {
-          list = snapshot.docs.map((docSnap) => ({
-            ...(docSnap.data() as Job),
-            id: docSnap.id,
-          }));
-        }
-      } catch {
-        // Fall back to seed jobs associated with demo client in development.
-        list = SEED_JOBS.filter((j) => j.clientId === 'client-demo-1');
-      }
-
-      // Merge persistent jobs belonging to this user
-      const userPersistent = savedJobs.filter(
-        (j) => j.clientId === user.uid || (user.uid === 'client-demo-1' && j.clientId === 'client-demo-1')
+      const db = getSafeFirestore();
+      const snapshot = await getDocs(
+        query(collection(db, 'jobs'), where('clientId', '==', user.uid))
       );
-
-      // Combine persistent jobs on top, avoiding duplicate ids
-      const combined = [
-        ...userPersistent,
-        ...list.filter((j) => !userPersistent.some((d) => d.id === j.id)),
-      ];
-
-      setJobs(combined);
+      const list: Array<Job & { id: string }> = snapshot.docs.map((docSnap) => ({
+        ...(docSnap.data() as Job),
+        id: docSnap.id,
+      }));
+      setJobs(list);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load your jobs.');
     } finally {
@@ -147,7 +120,7 @@ export default function MyJobsScreen() {
                 style={[styles.tabChip, isSelected && styles.tabChipSelected]}
               >
                 <Text style={[styles.tabLabel, isSelected && styles.tabLabelSelected]}>
-                  {tab.label}
+                  {tab.label}{' '}
                 </Text>
                 {count > 0 ? (
                   <View style={[styles.countBadge, isSelected && styles.countBadgeSelected]}>
@@ -209,6 +182,7 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.md,
     gap: spacing.md,
+    paddingBottom: 140,
   },
   header: {
     flexDirection: 'row',

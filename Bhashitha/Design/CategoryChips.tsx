@@ -53,7 +53,7 @@ export function CategoryChips({
             style={[styles.chip, isSelected && styles.selectedChip]}
           >
             <Text style={styles.icon}>{icon}</Text>
-            <Text style={[styles.text, isSelected && styles.selectedText]}>{category}</Text>
+            <Text style={[styles.text, isSelected && styles.selectedText]}>{category} </Text>
           </Pressable>
         );
       })}

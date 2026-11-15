@@ -1,8 +1,9 @@
-import { collection, doc, getDocFromServer, getDocs, query, where } from '@react-native-firebase/firestore';
+import { collection, doc, getDocFromServer, getDocs, query, serverTimestamp, setDoc, where } from '@react-native-firebase/firestore';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Platform,
   Pressable,
@@ -14,22 +15,96 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { ReportModal } from '../../Bhashitha/Moderation/ReportModal';
-import { SEED_REVIEWS, SEED_WORKERS, type SeedReview } from '../../Bhashitha/Seed/seed-data';
 import type { WorkerProfile } from '../../mobile/src/types/domain';
+import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 
 const arrow = require('../../mobile/assets/images/login/arrow-right.png');
 
-// Public worker profile screen matching the LinkWorks Figma/mockup specifications.
+type ReviewItem = {
+  id: string;
+  jobId?: string;
+  raterId: string;
+  raterName: string;
+  rateeId: string;
+  stars: number;
+  text: string;
+  createdAt?: any;
+};
+
+// Public worker profile screen matching the LinkWorks specifications with Cloud Firestore data.
 export default function WorkerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user, profile } = useAuth();
   const [worker, setWorker] = useState<WorkerProfile | null>(null);
-  const [reviews, setReviews] = useState<SeedReview[]>([]);
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [messagingBusy, setMessagingBusy] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
 
-  // Fetch the worker's public document and their verified customer reviews.
+  // Initiate or navigate into a direct inquiry conversation with this tradesperson.
+  async function handleMessageWorker() {
+    if (!worker || !user) return;
+    if (user.uid === worker.userId) {
+      Alert.alert('Notice', 'You cannot message your own worker profile.');
+      return;
+    }
+
+    try {
+      setMessagingBusy(true);
+      const db = getSafeFirestore();
+      const chatId = `direct_${[user.uid, worker.userId].sort().join('_')}`;
+      const chatRef = doc(db, 'chats', chatId);
+
+      let exists = false;
+      try {
+        const chatSnap = await getDocFromServer(chatRef);
+        exists = chatSnap.exists();
+      } catch {
+        // Non-existent document evaluation fallback
+        exists = false;
+      }
+
+      if (!exists) {
+        await setDoc(chatRef, {
+          chatId,
+          type: 'direct',
+          participants: [user.uid, worker.userId],
+          clientId: user.uid,
+          workerId: worker.userId,
+          clientInfo: {
+            name: profile?.name || 'Client',
+            phone: profile?.phone || user.phoneNumber || '',
+          },
+          workerInfo: {
+            name: worker.displayName,
+            phone: '',
+          },
+          jobTitle: `Inquiry: ${worker.displayName}`,
+          jobStatus: 'inquiry',
+          lastMessage: 'Direct conversation started.',
+          lastAt: serverTimestamp(),
+          unread: {
+            [user.uid]: 0,
+            [worker.userId]: 0,
+          },
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      router.push({
+        pathname: '/chat/[id]',
+        params: { id: chatId },
+      });
+    } catch (err) {
+      Alert.alert('Chat Error', err instanceof Error ? err.message : 'Could not open conversation.');
+    } finally {
+      setMessagingBusy(false);
+    }
+  }
+
+  // Fetch the worker's public document and their verified customer reviews from Cloud Firestore.
   useEffect(() => {
     async function fetchWorkerAndReviews() {
       if (!id) return;
@@ -37,47 +112,24 @@ export default function WorkerProfileScreen() {
         setLoading(true);
         setError('');
 
-        // 1. Fetch worker profile from Firestore or fallback to demo seed
-        let currentWorker: WorkerProfile | null = null;
-        try {
-          const db = getSafeFirestore();
-          const snapshot = await getDocFromServer(doc(db, 'workerProfiles', id));
-          if (snapshot.exists()) {
-            currentWorker = snapshot.data() as WorkerProfile;
-          }
-        } catch {
-          // Fall back gracefully in offline or preview mode
-        }
-
-        if (!currentWorker) {
-          currentWorker = SEED_WORKERS.find((w) => w.userId === id) ?? null;
-        }
-
-        if (!currentWorker) {
+        // 1. Fetch worker profile directly from Cloud Firestore
+        const db = getSafeFirestore();
+        const snapshot = await getDocFromServer(doc(db, 'workerProfiles', id));
+        if (!snapshot.exists()) {
           setError('Worker profile not found.');
           return;
         }
+        const currentWorker = snapshot.data() as WorkerProfile;
         setWorker(currentWorker);
 
         // 2. Fetch customer reviews for this worker
-        let fetchedReviews: SeedReview[] = [];
-        try {
-          const revSnap = await getDocs(
-            query(collection(getSafeFirestore(), 'reviews'), where('rateeId', '==', id))
-          );
-          if (!revSnap.empty) {
-            fetchedReviews = revSnap.docs.map((d) => ({
-              id: d.id,
-              ...(d.data() as Omit<SeedReview, 'id'>),
-            }));
-          }
-        } catch {
-          // Fall back to seed reviews in demo
-        }
-
-        if (fetchedReviews.length === 0) {
-          fetchedReviews = SEED_REVIEWS.filter((r) => r.rateeId === id);
-        }
+        const revSnap = await getDocs(
+          query(collection(db, 'reviews'), where('rateeId', '==', id))
+        );
+        const fetchedReviews: ReviewItem[] = revSnap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<ReviewItem, 'id'>),
+        }));
         setReviews(fetchedReviews);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error loading worker.');
@@ -108,19 +160,12 @@ export default function WorkerProfileScreen() {
     );
   }
 
-  const primarySkill = worker.skills[0] ?? 'Plumbing';
+  const primarySkill = worker.skills[0] ?? 'Tradesperson';
   const averageRating =
     reviews.length > 0
       ? reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length
-      : worker.ratingAvg || 4.9;
-  const reviewCount = reviews.length > 0 ? reviews.length : worker.ratingCount || 128;
-
-  // Mock portfolio projects to showcase work quality
-  const portfolioProjects = [
-    { title: 'Full Bathroom Pipework', tag: 'Completed', icon: '🚿' },
-    { title: 'Solar Water Pump Setup', tag: 'Installed', icon: '☀️' },
-    { title: 'Pressure Leak Detection', tag: 'Repaired', icon: '🔧' },
-  ];
+      : worker.ratingAvg || 0;
+  const reviewCount = reviews.length > 0 ? reviews.length : worker.ratingCount || 0;
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -190,22 +235,22 @@ export default function WorkerProfileScreen() {
           <View style={styles.metricDivider} />
 
           <View style={styles.metricItem}>
-            <Text style={styles.metricPrimary}>{worker.jobsCompleted || 85}</Text>
+            <Text style={styles.metricPrimary}>{worker.jobsCompleted || 0}</Text>
             <Text style={styles.metricSecondary}>Jobs Completed</Text>
           </View>
 
           <View style={styles.metricDivider} />
 
           <View style={styles.metricItem}>
-            <Text style={styles.metricPrimary}>98%</Text>
-            <Text style={styles.metricSecondary}>On-Time</Text>
+            <Text style={styles.metricPrimary}>100%</Text>
+            <Text style={styles.metricSecondary}>Verified</Text>
           </View>
 
           <View style={styles.metricDivider} />
 
           <View style={styles.metricItem}>
-            <Text style={styles.metricPrimary}>&lt; 15m</Text>
-            <Text style={styles.metricSecondary}>Response</Text>
+            <Text style={styles.metricPrimary}>{worker.serviceRadiusKm}km</Text>
+            <Text style={styles.metricSecondary}>Radius</Text>
           </View>
         </View>
 
@@ -233,22 +278,24 @@ export default function WorkerProfileScreen() {
         </View>
 
         {/* Portfolio / Previous Work Showcase */}
-        <View style={styles.cardSection}>
-          <Text style={styles.sectionHeading}>Recent Projects &amp; Portfolio</Text>
-          <View style={styles.portfolioGrid}>
-            {portfolioProjects.map((proj, idx) => (
-              <View key={idx} style={styles.portfolioItem}>
-                <View style={styles.portfolioIconBox}>
-                  <Text style={styles.portfolioIcon}>{proj.icon}</Text>
+        {worker.portfolio && worker.portfolio.length > 0 ? (
+          <View style={styles.cardSection}>
+            <Text style={styles.sectionHeading}>Recent Projects &amp; Portfolio</Text>
+            <View style={styles.portfolioGrid}>
+              {worker.portfolio.map((proj, idx) => (
+                <View key={idx} style={styles.portfolioItem}>
+                  <View style={styles.portfolioIconBox}>
+                    <Text style={styles.portfolioIcon}>🔧</Text>
+                  </View>
+                  <Text style={styles.portfolioTitle} numberOfLines={1}>
+                    {proj}
+                  </Text>
+                  <Text style={styles.portfolioTag}>Portfolio</Text>
                 </View>
-                <Text style={styles.portfolioTitle} numberOfLines={1}>
-                  {proj.title}
-                </Text>
-                <Text style={styles.portfolioTag}>{proj.tag}</Text>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
-        </View>
+        ) : null}
 
         {/* Customer Reviews Section */}
         <View style={styles.cardSection}>
@@ -279,15 +326,30 @@ export default function WorkerProfileScreen() {
           )}
         </View>
 
-        {/* Privacy Note */}
+        {/* Privacy & Direct Contact Note */}
         <View style={styles.privacyNotice}>
-          <Text style={styles.privacyShieldIcon}>🛡️</Text>
+          <Text style={styles.privacyShieldIcon}>💬</Text>
           <Text style={styles.privacyNoticeText}>
-            Direct phone calling and chat become available as soon as this tradesperson is assigned to your job.
+            Send a direct message to inquire about rates, scheduling, and project scope before requesting a quote.
           </Text>
         </View>
 
-        {/* Bottom Primary Action: Request a Quote */}
+        {/* Stacked Action 1: Direct Message */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Message ${worker.displayName}`}
+          disabled={messagingBusy}
+          onPress={() => { void handleMessageWorker(); }}
+          style={({ pressed }) => [styles.messageCTA, pressed && styles.pressed, messagingBusy && { opacity: 0.6 }]}
+        >
+          {messagingBusy ? (
+            <ActivityIndicator size="small" color={palette.primary} />
+          ) : (
+            <Text style={styles.messageCTAText}>💬 Message {worker.displayName}{' '}</Text>
+          )}
+        </Pressable>
+
+        {/* Stacked Action 2: Request a Quote */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Request quote from ${worker.displayName}`}
@@ -723,6 +785,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#46685d',
     lineHeight: 16,
+  },
+  messageCTA: {
+    height: 52,
+    borderRadius: 100,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: palette.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  messageCTAText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: palette.primary,
+    paddingRight: 4,
   },
   primaryCTA: {
     height: 52,

@@ -7,7 +7,7 @@ import { useAuth } from '../Auth/AuthContext';
 
 // Comprehensive Settings Screen managing account details, worker services, role toggles, and legal disclosures.
 export default function SettingsScreen() {
-  const { user, profile, workerReady, selectRole, signOut, signInDemoClient, signInDemoWorker } = useAuth();
+  const { user, profile, workerReady, selectRole, signOut } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -58,7 +58,7 @@ export default function SettingsScreen() {
           <View style={styles.profileDetails}>
             <Text style={styles.displayName}>{profile?.name || 'User'}</Text>
             <View style={styles.verifiedRow}>
-              <Text style={styles.phoneText}>{profile?.phone || '+94 77 123 4567'}</Text>
+              <Text style={styles.phoneText}>{profile?.phone || user?.phoneNumber || '+94 77 123 4567'}</Text>
               <View style={styles.verifiedBadge}>
                 <Text style={styles.verifiedBadgeText}>✓ Verified</Text>
               </View>
@@ -115,39 +115,12 @@ export default function SettingsScreen() {
         />
         <View style={styles.appInfoRow}>
           <Text style={styles.infoLabel}>LinkWorks Release Version:</Text>
-          <Text style={styles.infoValue}>v1.0.0 (Demo Build)</Text>
+          <Text style={styles.infoValue}>v1.0.0</Text>
         </View>
         <Text style={styles.policySnippet}>
           Direct tradesperson marketplace built for Sri Lanka. All phone contacts remain masked until job assignment.
         </Text>
       </Card>
-
-      {/* Evaluator Demo Switcher for fast grading */}
-      {(signInDemoClient && signInDemoWorker) ? (
-        <Card title="Quick Demo Switcher">
-          <Text style={styles.demoHint}>
-            Easily alternate between hiring as a client and quoting as a verified worker:
-          </Text>
-          <View style={styles.demoButtons}>
-            <Action
-              label="Demo Client (Kamal)"
-              secondary
-              onPress={() => {
-                signInDemoClient();
-                setSuccessMsg('Signed in as Kamal Perera (Demo Client)');
-              }}
-            />
-            <Action
-              label="Demo Worker (Sunil)"
-              secondary
-              onPress={() => {
-                signInDemoWorker();
-                setSuccessMsg('Signed in as Sunil Shantha (Demo Worker)');
-              }}
-            />
-          </View>
-        </Card>
-      ) : null}
 
       {successMsg ? <Status message={successMsg} /> : null}
       {error ? <Status message={error} error /> : null}
@@ -160,127 +133,134 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   title: {
-    color: palette.heading,
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
+    color: palette.heading,
+    marginBottom: spacing.md,
     fontFamily: 'Plus Jakarta Sans',
   },
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.xs,
+    gap: 16,
+    marginBottom: spacing.md,
   },
   avatarCircle: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#e6f7ef',
+    backgroundColor: palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: palette.brand,
   },
   avatarLetter: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
-    color: palette.brand,
+    color: '#ffffff',
+    fontFamily: 'Plus Jakarta Sans',
   },
   profileDetails: {
     flex: 1,
-    gap: 3,
+    gap: 4,
   },
   displayName: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: palette.heading,
-  },
-  phoneText: {
-    fontSize: 14,
-    color: palette.muted,
+    fontFamily: 'Plus Jakarta Sans',
   },
   verifiedRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 8,
+  },
+  phoneText: {
+    fontSize: 13,
+    color: palette.muted,
+    fontFamily: 'Plus Jakarta Sans',
   },
   verifiedBadge: {
-    backgroundColor: '#e6f7ef',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    backgroundColor: '#e6f7f2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     borderRadius: 6,
   },
   verifiedBadgeText: {
-    color: '#027a48',
     fontSize: 11,
     fontWeight: '700',
+    color: palette.primary,
+    fontFamily: 'Plus Jakarta Sans',
   },
   cityText: {
     fontSize: 13,
-    color: palette.muted,
+    color: palette.heading,
+    fontWeight: '600',
+    fontFamily: 'Plus Jakarta Sans',
   },
   modeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.border,
-    marginVertical: spacing.xs,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#e8edf0',
+    marginVertical: 12,
   },
   modeLabel: {
     fontSize: 14,
-    color: palette.muted,
     fontWeight: '600',
+    color: palette.heading,
+    fontFamily: 'Plus Jakarta Sans',
   },
   modePill: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
   },
   clientPill: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#eef4ff',
   },
   workerPill: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: '#ecfdf5',
   },
   modePillText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
   },
   workerServicesSubtitle: {
     fontSize: 13,
     color: palette.muted,
-    lineHeight: 18,
-    marginBottom: spacing.xs,
+    lineHeight: 19,
+    marginBottom: 12,
+    fontFamily: 'Plus Jakarta Sans',
   },
   appInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f3f5',
+    marginTop: 8,
   },
   infoLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: palette.muted,
+    fontFamily: 'Plus Jakarta Sans',
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: palette.heading,
+    fontFamily: 'Plus Jakarta Sans',
   },
   policySnippet: {
     fontSize: 12,
     color: palette.muted,
-    lineHeight: 16,
-  },
-  demoHint: {
-    color: palette.muted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  demoButtons: {
-    gap: spacing.xs,
+    lineHeight: 17,
+    marginTop: 8,
+    fontFamily: 'Plus Jakarta Sans',
   },
 });

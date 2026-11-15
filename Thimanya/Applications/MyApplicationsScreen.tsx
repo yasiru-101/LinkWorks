@@ -1,4 +1,4 @@
-import { collectionGroup, getDocs, getFirestore, query, where, doc, updateDoc, serverTimestamp } from '@react-native-firebase/firestore';
+import { collectionGroup, getDoc, getDocs, query, where, doc, updateDoc, serverTimestamp } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -7,6 +7,7 @@ import { Action, Status } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import type { ApplicationStatus } from '../../mobile/src/types/domain';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
+import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 
 type WorkerApplicationItem = {
   jobId: string;
@@ -18,37 +19,6 @@ type WorkerApplicationItem = {
   status: ApplicationStatus;
   createdAt?: string;
 };
-
-// Fallback mock applications for demo/preview mode.
-const DEMO_APPLICATIONS: WorkerApplicationItem[] = [
-  {
-    jobId: 'job-colombo-kitchen-pipe',
-    jobTitle: 'Repair leaking kitchen drain pipe',
-    categoryId: 'Plumbing',
-    addressText: 'Colombo 03 (Kollupitiya)',
-    quotedPriceLkr: 4500,
-    message: 'Can inspect and replace pipe joints today with 6-month warranty.',
-    status: 'accepted',
-  },
-  {
-    jobId: 'job-colombo-trip-switch',
-    jobTitle: 'Main breaker tripping intermittently',
-    categoryId: 'Electrical',
-    addressText: 'Colombo 05 (Havelock Town)',
-    quotedPriceLkr: 5000,
-    message: 'I have megger insulation tester and circuit load analyzer ready.',
-    status: 'submitted',
-  },
-  {
-    jobId: 'job-negombo-exterior-paint',
-    jobTitle: 'Paint 2-storey house exterior front',
-    categoryId: 'Painting',
-    addressText: 'Negombo (Kochchikade)',
-    quotedPriceLkr: 28000,
-    message: 'Experienced exterior painting team with high ladders and sprayer.',
-    status: 'rejected',
-  },
-];
 
 function getStatusBadge(status: ApplicationStatus) {
   switch (status) {
@@ -65,7 +35,7 @@ function getStatusBadge(status: ApplicationStatus) {
   }
 }
 
-// Worker screen showing all jobs applied to and bid status tracking.
+// Worker screen showing all jobs applied to and bid status tracking powered by Cloud Firestore.
 export default function MyApplicationsScreen() {
   const { user } = useAuth();
   const [applications, setApplications] = useState<WorkerApplicationItem[]>([]);
@@ -73,40 +43,50 @@ export default function MyApplicationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load worker's applications across all jobs using collectionGroup.
+  // Load worker's applications across all jobs using collectionGroup directly from Cloud Firestore.
   const loadApplications = useCallback(async () => {
     if (!user) return;
     try {
       setError(null);
-      let list: WorkerApplicationItem[] = [];
+      const db = getSafeFirestore();
+      const snapshot = await getDocs(
+        query(collectionGroup(db, 'applications'), where('workerId', '==', user.uid))
+      );
+      // Fetch parent job titles and details concurrently so cards render rich job information
+      const list: WorkerApplicationItem[] = await Promise.all(
+        snapshot.docs.map(async (docSnap) => {
+          const data = docSnap.data();
+          const parentJobRef = docSnap.ref.parent.parent;
+          const parentJobId = parentJobRef ? parentJobRef.id : 'unknown';
+          let jobTitle = data.jobTitle || 'Skilled Trade Job';
+          let categoryId = data.categoryId || 'Trade';
+          let addressText = data.addressText || 'Sri Lanka';
 
-      try {
-        const snapshot = await getDocs(
-          query(collectionGroup(getFirestore(), 'applications'), where('workerId', '==', user.uid))
-        );
-        if (!snapshot.empty) {
-          list = snapshot.docs.map((docSnap) => {
-            const data = docSnap.data();
-            const parentJobRef = docSnap.ref.parent.parent;
-            return {
-              jobId: parentJobRef ? parentJobRef.id : 'unknown',
-              jobTitle: data.jobTitle || 'Skilled Trade Job',
-              categoryId: data.categoryId || 'Trade',
-              addressText: data.addressText || 'Sri Lanka',
-              quotedPriceLkr: data.quotedPriceLkr || 0,
-              message: data.message || '',
-              status: data.status || 'submitted',
-            };
-          });
-        }
-      } catch {
-        // Fall back to demo applications in preview
-      }
+          if (parentJobRef) {
+            try {
+              const jobSnap = await getDoc(parentJobRef);
+              if (jobSnap.exists()) {
+                const jobData = jobSnap.data();
+                if (jobData?.title) jobTitle = jobData.title;
+                if (jobData?.categoryId) categoryId = jobData.categoryId;
+                if (jobData?.addressText) addressText = jobData.addressText;
+              }
+            } catch {
+              // Non-critical fallback if parent job read is restricted
+            }
+          }
 
-      if (list.length === 0) {
-        list = DEMO_APPLICATIONS;
-      }
-
+          return {
+            jobId: parentJobId,
+            jobTitle,
+            categoryId,
+            addressText,
+            quotedPriceLkr: data.quotedPriceLkr || 0,
+            message: data.message || '',
+            status: data.status || 'submitted',
+          };
+        })
+      );
       setApplications(list);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load applications.');
@@ -125,18 +105,14 @@ export default function MyApplicationsScreen() {
     void loadApplications();
   };
 
-  // Withdraw a submitted quote before assignment.
+  // Withdraw a submitted quote before assignment directly on Cloud Firestore.
   async function withdrawQuote(jobId: string) {
     if (!user) return;
     try {
-      try {
-        await updateDoc(doc(getFirestore(), 'jobs', jobId, 'applications', user.uid), {
-          status: 'withdrawn',
-          updatedAt: serverTimestamp(),
-        });
-      } catch {
-        // Update local state in preview
-      }
+      await updateDoc(doc(getSafeFirestore(), 'jobs', jobId, 'applications', user.uid), {
+        status: 'withdrawn',
+        updatedAt: serverTimestamp(),
+      });
       setApplications((prev) =>
         prev.map((app) => (app.jobId === jobId ? { ...app, status: 'withdrawn' } : app))
       );
@@ -164,7 +140,14 @@ export default function MyApplicationsScreen() {
         ) : error ? (
           <View style={styles.stateBox}>
             <Text style={styles.errorText}>{error}</Text>
-            <Action label="Retry" secondary onPress={loadApplications} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading applications"
+              onPress={loadApplications}
+              style={styles.retryButton}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </Pressable>
           </View>
         ) : applications.length === 0 ? (
           <View style={styles.stateBox}>
@@ -246,7 +229,7 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.md,
     gap: spacing.md,
-    paddingBottom: spacing.xl,
+    paddingBottom: 140,
   },
   header: {
     marginBottom: spacing.xs,
@@ -382,5 +365,23 @@ const styles = StyleSheet.create({
     color: palette.danger,
     fontSize: 14,
     textAlign: 'center',
+    lineHeight: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: palette.primary,
+    backgroundColor: '#ffffff',
+    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryButtonText: {
+    color: palette.primary,
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Plus Jakarta Sans',
   },
 });

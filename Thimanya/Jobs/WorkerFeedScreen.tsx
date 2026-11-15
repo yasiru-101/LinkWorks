@@ -6,13 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CitySelectorModal } from '../../Bhashitha/Design/CitySelectorModal';
 import { JobCard } from '../../Bhashitha/Design/JobCard';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
-import { SEED_JOBS, SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
 import type { Job, WorkerProfile } from '../../mobile/src/types/domain';
 import { distanceKm, type SupportedCity } from '../../Pasindu/Discovery/geo';
 import { useSearchCenter } from '../../Pasindu/Discovery/search-center';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
-import { getPersistentJobs, loadPersistentJobs } from './job-storage';
 
 const RADIUS_OPTIONS = [5, 10, 15, 25, 50];
 
@@ -39,67 +37,47 @@ export default function WorkerFeedScreen() {
   const [error, setError] = useState<string | null>(null);
   const [cityModalVisible, setCityModalVisible] = useState(false);
 
-  // Load worker's skills and service radius from profile.
+  // Load worker's skills and service radius directly from Cloud Firestore.
   const loadWorkerProfile = useCallback(async () => {
     if (!user) return;
     try {
       const snap = await getDocFromServer(doc(getSafeFirestore(), 'workerProfiles', user.uid));
       if (snap.exists()) {
         setWorkerProfile(snap.data() as WorkerProfile);
-        return;
       }
     } catch {
-      // In web/preview, match with first seed worker
+      // Offline fallback
     }
-    const defaultProfile = SEED_WORKERS[0];
-    setWorkerProfile(defaultProfile);
   }, [user]);
 
-  // Load open jobs and filter by worker skills and geographic radius.
+  // Load open jobs directly from Cloud Firestore and filter by worker skills and geographic radius.
   const loadMatchingJobs = useCallback(async () => {
     try {
       setError(null);
 
-      // 1. Load persistent jobs from physical device flash storage
-      const savedJobs = await loadPersistentJobs();
-      let list: Array<Job & { id: string }> = [];
-
-      // 2. Fetch live open jobs from Cloud Firestore
-      try {
-        const db = getSafeFirestore();
-        const snapshot = await getDocs(
-          query(collection(db, 'jobs'), where('status', '==', 'open'))
-        );
-        if (!snapshot.empty) {
-          list = snapshot.docs.map((docSnap) => ({
-            ...(docSnap.data() as Job),
-            id: docSnap.id,
-          }));
-        }
-      } catch {
-        // Fall back to seed open jobs in demo/preview.
-        list = SEED_JOBS.filter((j) => j.status === 'open');
-      }
-
-      // Merge persistent open jobs created on this device
-      const persistentOpen = savedJobs.filter((j) => j.status === 'open');
-      list = [...persistentOpen, ...list.filter((j) => !persistentOpen.some((d) => d.id === j.id))];
-
-      if (list.length === 0) {
-        list = SEED_JOBS.filter((j) => j.status === 'open');
-      }
+      // Fetch live open jobs from Cloud Firestore
+      const db = getSafeFirestore();
+      const snapshot = await getDocs(
+        query(collection(db, 'jobs'), where('status', '==', 'open'))
+      );
+      const list: Array<Job & { id: string }> = snapshot.docs.map((docSnap) => ({
+        ...(docSnap.data() as Job),
+        id: docSnap.id,
+      }));
 
       const centerCoords = { lat, lng };
-      const workerSkills = workerProfile?.skills ?? ['Plumbing'];
+      const workerSkills = workerProfile?.skills ?? [];
       const effectiveRadius = Math.min(radiusKm, workerProfile?.serviceRadiusKm ?? 50);
 
       const matched = list
         .filter((job) => {
-          // 1. Skill match: job's category must be among the worker's registered skills
-          const skillMatch = workerSkills.some(
-            (skill) => skill.toLowerCase() === job.categoryId.toLowerCase()
-          );
-          if (!skillMatch) return false;
+          // 1. Skill match: if worker has skills configured, category must match
+          if (workerSkills.length > 0) {
+            const skillMatch = workerSkills.some(
+              (skill) => skill.toLowerCase() === job.categoryId.toLowerCase()
+            );
+            if (!skillMatch) return false;
+          }
 
           // 2. Distance match: job must be within search/service radius
           const jobCoords = job.geo ?? { lat: 6.9271, lng: 79.8612 };
@@ -164,7 +142,7 @@ export default function WorkerFeedScreen() {
           >
             <View style={[styles.statusDot, isGpsActive ? styles.dotGps : styles.dotManual]} />
             <Text style={styles.cityText}>
-              {isLocating ? 'Locating…' : isGpsActive ? `GPS: ${city}` : city}
+              {isLocating ? 'Locating… ' : isGpsActive ? `GPS: ${city} ` : `${city} `}
             </Text>
           </Pressable>
         </View>
@@ -209,7 +187,7 @@ export default function WorkerFeedScreen() {
                 style={[styles.radiusChip, isSelected && styles.selectedRadius]}
               >
                 <Text style={[styles.radiusText, isSelected && styles.selectedRadiusText]}>
-                  {r} km
+                  {r} km{' '}
                 </Text>
               </Pressable>
             );
@@ -219,10 +197,10 @@ export default function WorkerFeedScreen() {
         {/* Results Count & Location Subtitle */}
         <View style={styles.resultsHeader}>
           <Text style={styles.resultsTitle}>
-            Open Jobs ({jobs.length})
+            Open Jobs ({jobs.length}){' '}
           </Text>
           <Text style={styles.resultsLocation}>
-            {isGpsActive ? `Near your GPS location (${city})` : `within ${radiusKm} km of ${city}`}
+            {isGpsActive ? `Near your GPS location (${city}) ` : `within ${radiusKm} km of ${city} `}
           </Text>
         </View>
 
@@ -243,10 +221,10 @@ export default function WorkerFeedScreen() {
           <View style={styles.stateContainer}>
             <Text style={styles.emptyTitle}>No matching jobs nearby</Text>
             <Text style={styles.stateText}>
-              There are currently no open {workerProfile?.skills.join('/')} jobs within {radiusKm} km of {city}.
+              There are currently no open {workerProfile?.skills.join('/')} jobs within {radiusKm} km of {city}.{' '}
             </Text>
             <Pressable onPress={() => setRadiusKm(50)} style={styles.expandButton}>
-              <Text style={styles.expandText}>Expand search to 50 km</Text>
+              <Text style={styles.expandText}>Expand search to 50 km </Text>
             </Pressable>
           </View>
         ) : (
@@ -283,7 +261,7 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.md,
     gap: spacing.sm,
-    paddingBottom: spacing.xl,
+    paddingBottom: 140,
   },
   header: {
     flexDirection: 'row',
@@ -333,6 +311,7 @@ const styles = StyleSheet.create({
     color: palette.heading,
     fontSize: 13,
     fontWeight: '700',
+    paddingRight: 6,
   },
   coverageNoticeCard: {
     backgroundColor: '#fef3c7',
@@ -416,18 +395,22 @@ const styles = StyleSheet.create({
   resultsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
     marginTop: spacing.xs,
   },
   resultsTitle: {
     color: palette.heading,
     fontSize: 17,
     fontWeight: '700',
-    fontFamily: 'Plus Jakarta Sans',
+    paddingRight: 4,
   },
   resultsLocation: {
     color: palette.muted,
     fontSize: 12,
+    flexShrink: 1,
+    paddingRight: 4,
   },
   stateContainer: {
     padding: spacing.xl,
@@ -443,6 +426,8 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontSize: 14,
     textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 8,
   },
   emptyTitle: {
     color: palette.heading,
@@ -460,6 +445,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '700',
+    paddingHorizontal: 4,
   },
   errorText: {
     color: palette.danger,

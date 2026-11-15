@@ -1,3 +1,4 @@
+import { collection, doc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -6,8 +7,8 @@ import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { CITY_CENTERS, findNearestSupportedCity, geohashForPoint, type SupportedCity } from '../../Pasindu/Discovery/geo';
 import { getCurrentDeviceLocation, isFusedLocationAvailable, requestLocationPermissions } from '../../Pasindu/Discovery/location-service';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
+import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 import { validateOpenJob } from '../JobContracts/validation';
-import { savePersistentJob } from './job-storage';
 
 const CATEGORIES = [
   'Plumbing',
@@ -119,13 +120,10 @@ export default function PostJobScreen() {
       setBusy(true);
       setError('');
 
-      // Unique identifier for the new job
-      const dynamicJobId = `job-client-${Date.now()}`;
-
-      // Persist the job permanently to Cloud Firestore AND physical device flash storage.
-      // This ensures the job remains saved across app restarts until explicitly removed by the owner.
-      await savePersistentJob({
-        id: dynamicJobId,
+      // Create a new job document directly in Cloud Firestore
+      const db = getSafeFirestore();
+      const jobDocRef = doc(collection(db, 'jobs'));
+      await setDoc(jobDocRef, {
         clientId: user.uid,
         title: title.trim(),
         description: description.trim(),
@@ -139,6 +137,8 @@ export default function PostJobScreen() {
         preferredDate,
         status: 'open',
         applicationCount: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
       // Navigate to client jobs list after posting.
@@ -252,10 +252,11 @@ export default function PostJobScreen() {
                 onPress={() => {
                   setCity(c);
                   setUseGpsCoords(false);
+                  setError('');
                 }}
                 style={[styles.chip, isSelected && styles.selectedChip]}
               >
-                <Text style={[styles.chipText, isSelected && styles.selectedChipText]}>{c}</Text>
+                <Text style={[styles.chipText, isSelected && styles.selectedChipText]}>📍 {c} </Text>
               </Pressable>
             );
           })}
@@ -311,9 +312,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
     backgroundColor: '#f4f4f5',
     borderWidth: 1,
     borderColor: '#e4e4e7',
@@ -325,7 +326,8 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     color: palette.heading,
-    fontWeight: '600',
+    fontWeight: '700',
+    paddingRight: 6,
   },
   selectedChipText: {
     color: '#ffffff',

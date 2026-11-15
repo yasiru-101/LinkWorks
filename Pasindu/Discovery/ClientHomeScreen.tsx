@@ -7,7 +7,6 @@ import { CategoryChips, type TradeCategory } from '../../Bhashitha/Design/Catego
 import { CitySelectorModal } from '../../Bhashitha/Design/CitySelectorModal';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { WorkerCard } from '../../Bhashitha/Design/WorkerCard';
-import { SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
 import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 import type { WorkerProfile } from '../../mobile/src/types/domain';
 import { distanceKm, type SupportedCity } from './geo';
@@ -40,27 +39,15 @@ export default function ClientHomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [cityModalVisible, setCityModalVisible] = useState(false);
 
-  // Load available workers from Firestore, or fall back to seed data if empty/offline.
+  // Load available verified workers directly from Cloud Firestore.
   const loadWorkers = useCallback(async () => {
     try {
       setError(null);
-      let list: WorkerProfile[] = [];
-      try {
-        const db = getSafeFirestore();
-        const snapshot = await getDocs(
-          query(collection(db, 'workerProfiles'), where('isAvailable', '==', true))
-        );
-        if (!snapshot.empty) {
-          list = snapshot.docs.map((doc) => doc.data() as WorkerProfile);
-        }
-      } catch {
-        // Fall back gracefully to seed workers in development/preview environments.
-        list = SEED_WORKERS;
-      }
-
-      if (list.length === 0) {
-        list = SEED_WORKERS;
-      }
+      const db = getSafeFirestore();
+      const snapshot = await getDocs(
+        query(collection(db, 'workerProfiles'), where('isAvailable', '==', true))
+      );
+      const list: WorkerProfile[] = snapshot.docs.map((doc) => doc.data() as WorkerProfile);
 
       // Filter by category, text query, and calculate exact Haversine distance.
       const centerCoords = { lat, lng };
@@ -128,9 +115,9 @@ export default function ClientHomeScreen() {
             onPress={() => setCityModalVisible(true)}
             style={[styles.cityPill, isGpsActive && styles.cityPillGps]}
           >
-            <Text style={styles.cityPinIcon}>📍</Text>
+            <Text style={styles.cityPinIcon}>📍 </Text>
             <Text style={styles.cityText}>
-              {isLocating ? 'Locating…' : isGpsActive ? `${city} (GPS)` : `${city} • ${radiusKm}km`}
+              {isLocating ? 'Locating… ' : isGpsActive ? `${city} (GPS) ` : `${city} • ${radiusKm}km `}
             </Text>
             <Text style={styles.cityDropdownIcon}>▼</Text>
           </Pressable>
@@ -186,16 +173,16 @@ export default function ClientHomeScreen() {
             onPress={() => router.push('/post-job')}
             style={({ pressed }) => [styles.bannerButton, pressed && { opacity: 0.85 }]}
           >
-            <Text style={styles.bannerButtonText}>+ Post Job</Text>
+            <Text style={styles.bannerButtonText}>+ Post Job </Text>
           </Pressable>
         </View>
 
         {/* Section Header with List vs Map Segmented Pill */}
         <View style={styles.sectionHeaderRow}>
-          <View>
-            <Text style={styles.sectionTitle}>Nearby Verified Pros</Text>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.sectionTitle}>Nearby Verified Pros </Text>
             <Text style={styles.resultsLocation}>
-              {workers.length} {workers.length === 1 ? 'tradesperson' : 'tradespeople'} found in {city}
+              {workers.length} {workers.length === 1 ? 'tradesperson' : 'tradespeople'} found in {city}{' '}
             </Text>
           </View>
 
@@ -237,14 +224,14 @@ export default function ClientHomeScreen() {
           <View style={styles.stateContainer}>
             <Text style={styles.emptyTitle}>No workers found</Text>
             <Text style={styles.stateText}>
-              There are no available {selectedCategory === 'All' ? '' : selectedCategory} workers within {radiusKm} km of {city}.
+              There are no available {selectedCategory === 'All' ? '' : selectedCategory} workers within {radiusKm} km of {city}.{' '}
             </Text>
             <View style={styles.emptyActions}>
               <Pressable onPress={() => setRadiusKm(50)} style={styles.expandButton}>
-                <Text style={styles.expandText}>Expand to 50 km</Text>
+                <Text style={styles.expandText}>Expand to 50 km </Text>
               </Pressable>
               <Pressable onPress={() => setCityModalVisible(true)} style={styles.switchCityButton}>
-                <Text style={styles.switchCityText}>Change City</Text>
+                <Text style={styles.switchCityText}>Change City </Text>
               </Pressable>
             </View>
           </View>
@@ -291,7 +278,7 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.md,
     gap: spacing.sm,
-    paddingBottom: spacing.xl,
+    paddingBottom: 140,
   },
   header: {
     flexDirection: 'row',
@@ -342,7 +329,7 @@ const styles = StyleSheet.create({
     color: palette.heading,
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: 'Plus Jakarta Sans',
+    paddingRight: 6,
   },
   searchBarWrapper: {
     flexDirection: 'row',
@@ -472,6 +459,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
+    flexShrink: 0,
   },
   bannerButtonText: {
     color: palette.primary,
@@ -543,12 +531,14 @@ const styles = StyleSheet.create({
   },
   emptyActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: spacing.sm,
     marginTop: spacing.xs,
   },
   expandButton: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     backgroundColor: palette.primary,
     borderRadius: 20,
   },
@@ -556,10 +546,11 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '700',
+    paddingHorizontal: 4,
   },
   switchCityButton: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: palette.primary,
     borderRadius: 20,
@@ -568,6 +559,7 @@ const styles = StyleSheet.create({
     color: palette.primary,
     fontSize: 13,
     fontWeight: '700',
+    paddingHorizontal: 4,
   },
   errorText: {
     color: palette.danger,

@@ -38,57 +38,26 @@ type MessageItem = {
   photoCaption?: string;
 };
 
-// Fallback demo conversation messages matching the mockup.
-const DEMO_THREAD_MESSAGES: MessageItem[] = [
-  {
-    id: 'm1',
-    senderId: 'worker-colombo-plumber-1',
-    text: 'Hello Kamal! I have the replacement brass valves and pressure pump ready. Heading over now.',
-    createdAtText: '10:16 AM',
-    isSelf: false,
-  },
-  {
-    id: 'm2',
-    senderId: 'demo-client-1',
-    text: 'Great Sunil! Please call me when you reach the gate, I will buzz you in.',
-    createdAtText: '10:18 AM',
-    isSelf: true,
-  },
-  {
-    id: 'm3',
-    senderId: 'worker-colombo-plumber-1',
-    text: 'Here is the high-pressure brass valve I will be installing:',
-    photoCaption: 'Brass Valve Replacement (3/4 inch)',
-    createdAtText: '10:20 AM',
-    isSelf: false,
-  },
-  {
-    id: 'm4',
-    senderId: 'demo-client-1',
-    text: 'Looks solid! See you soon.',
-    createdAtText: '10:22 AM',
-    isSelf: true,
-  },
-];
-
-// High-fidelity real-time job-linked chat thread matching LinkWorks mockup.
+// High-fidelity real-time job-linked chat thread powered purely by Cloud Firestore.
 export default function ChatThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>(); // jobId
   const { user, profile } = useAuth();
 
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [inputText, setInputText] = useState('');
-  const [jobTitle, setJobTitle] = useState('Fix Main Water Leak');
-  const [otherName, setOtherName] = useState('Sunil Perera');
-  const [otherPhone, setOtherPhone] = useState('+94779876543');
+  const [jobTitle, setJobTitle] = useState('Job Details');
+  const [otherName, setOtherName] = useState('Member');
+  const [otherPhone, setOtherPhone] = useState('');
+  const [otherRole, setOtherRole] = useState('Online');
+  const [targetWorkerId, setTargetWorkerId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState('assigned');
-  const [agreedPrice, setAgreedPrice] = useState('14,500');
+  const [agreedPrice, setAgreedPrice] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
 
-  // Load chat header metadata and establish real-time snapshot listener.
+  // Load chat header metadata and establish real-time snapshot listener on Cloud Firestore.
   useEffect(() => {
     if (!id || !user) return;
     const currentUid = user.uid;
@@ -98,22 +67,24 @@ export default function ChatThreadScreen() {
         const chatSnap = await getDocFromServer(doc(getSafeFirestore(), 'chats', id));
         if (chatSnap.exists()) {
           const data = chatSnap.data();
-          setJobTitle(data.jobTitle || 'Fix Main Water Leak');
+          setJobTitle(data.jobTitle || 'Job Details');
           setJobStatus(data.jobStatus || 'assigned');
-          const isClient = data.participants?.[0] === currentUid;
+          const isClient = data.clientId ? data.clientId === currentUid : data.participants?.[0] === currentUid;
           const otherInfo = isClient ? data.workerInfo : data.clientInfo;
           if (otherInfo?.name) setOtherName(otherInfo.name);
           if (otherInfo?.phone) setOtherPhone(otherInfo.phone);
+          if (data.workerId) setTargetWorkerId(data.workerId);
+          setOtherRole(isClient ? (otherInfo?.trade || 'Verified Tradesperson • Online') : 'Client • Online');
         }
       } catch {
-        // Fall back in preview mode
+        // Fall back gracefully in offline mode
       } finally {
         setLoading(false);
       }
     }
     void fetchChatHeader();
 
-    // Listen to messages subcollection in real time.
+    // Listen to messages subcollection in real time via Cloud Firestore onSnapshot.
     let unsubscribe = () => {};
     try {
       const q = query(
@@ -138,18 +109,15 @@ export default function ChatThreadScreen() {
             });
             setMessages(list);
           } else {
-            setMessages(DEMO_THREAD_MESSAGES.map((m) => ({ ...m, isSelf: m.senderId === currentUid || m.senderId === 'demo-client-1' })));
+            setMessages([]);
           }
           setLoading(false);
         },
         () => {
-          // Fall back to demo messages on snapshot error or offline
-          setMessages(DEMO_THREAD_MESSAGES.map((m) => ({ ...m, isSelf: m.senderId === currentUid || m.senderId === 'demo-client-1' })));
           setLoading(false);
         }
       );
     } catch {
-      setMessages(DEMO_THREAD_MESSAGES.map((m) => ({ ...m, isSelf: m.senderId === currentUid || m.senderId === 'demo-client-1' })));
       setLoading(false);
     }
 
@@ -159,7 +127,7 @@ export default function ChatThreadScreen() {
     };
   }, [id, user]);
 
-  // Send a new text message.
+  // Send a new text message directly to Cloud Firestore.
   async function sendMessage() {
     if (!inputText.trim() || !id || !user) return;
     const textToSend = inputText.trim();
@@ -167,51 +135,47 @@ export default function ChatThreadScreen() {
     setSending(true);
 
     try {
-      try {
-        const firestore = getSafeFirestore();
-        await addDoc(collection(firestore, 'chats', id, 'messages'), {
-          senderId: user.uid,
-          senderName: profile?.name || 'LinkWorks Member',
-          text: textToSend,
-          createdAt: serverTimestamp(),
-          readBy: [user.uid],
-        });
+      const firestore = getSafeFirestore();
+      await addDoc(collection(firestore, 'chats', id, 'messages'), {
+        senderId: user.uid,
+        senderName: profile?.name || 'LinkWorks Member',
+        text: textToSend,
+        createdAt: serverTimestamp(),
+        readBy: [user.uid],
+      });
 
-        await updateDoc(doc(firestore, 'chats', id), {
-          lastMessage: textToSend,
-          lastAt: serverTimestamp(),
-        });
-      } catch {
-        // Local simulation for preview mode
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `local-${Date.now()}`,
-            senderId: user.uid,
-            text: textToSend,
-            createdAtText: 'Just now',
-            isSelf: true,
-          },
-        ]);
-      }
+      await updateDoc(doc(firestore, 'chats', id), {
+        lastMessage: textToSend,
+        lastAt: serverTimestamp(),
+      });
+    } catch (cause) {
+      console.warn('[LinkWorks Chat] Could not send message to Cloud Firestore:', cause);
     } finally {
       setSending(false);
     }
   }
 
-  // Quick photo upload simulation for demo
-  function sendHardwarePhoto() {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `photo-${Date.now()}`,
-        senderId: user?.uid || 'self',
-        text: 'Attaching photo of replacement part for reference:',
-        photoCaption: 'Brass Valve Replacement (3/4 inch)',
-        createdAtText: 'Just now',
-        isSelf: true,
-      },
-    ]);
+  // Upload photo attachment message directly to Cloud Firestore.
+  async function sendHardwarePhoto() {
+    if (!id || !user) return;
+    try {
+      const firestore = getSafeFirestore();
+      await addDoc(collection(firestore, 'chats', id, 'messages'), {
+        senderId: user.uid,
+        senderName: profile?.name || 'LinkWorks Member',
+        text: 'Attaching hardware photo for reference:',
+        photoCaption: 'Hardware Spec Attachment',
+        createdAt: serverTimestamp(),
+        readBy: [user.uid],
+      });
+
+      await updateDoc(doc(firestore, 'chats', id), {
+        lastMessage: 'Attaching hardware photo for reference:',
+        lastAt: serverTimestamp(),
+      });
+    } catch (cause) {
+      console.warn('[LinkWorks Chat] Could not send photo attachment to Cloud Firestore:', cause);
+    }
   }
 
   return (
@@ -238,33 +202,46 @@ export default function ChatThreadScreen() {
           <View style={styles.headerInfo}>
             <Text numberOfLines={1} style={styles.headerTitle}>{otherName}</Text>
             <Text numberOfLines={1} style={styles.headerSubtitle}>
-              {profile?.activeRole === 'client' ? 'Master Plumber • Online' : 'Client • Online'}
+              {otherRole}
             </Text>
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Call ${otherName}`}
-            onPress={() => Linking.openURL(`tel:${otherPhone}`)}
-            style={({ pressed }) => [styles.callIconBtn, pressed && { opacity: 0.8 }]}
-          >
-            <Text style={styles.callIconText}>📞</Text>
-          </Pressable>
+          {otherPhone ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Call ${otherName}`}
+              onPress={() => { void Linking.openURL(`tel:${otherPhone}`); }}
+              style={({ pressed }) => [styles.callIconBtn, pressed && { opacity: 0.8 }]}
+            >
+              <Text style={styles.callIconText}>📞</Text>
+            </Pressable>
+          ) : null}
         </View>
 
-        {/* Persistent Pinned Job Context Banner */}
+        {/* Persistent Pinned Job / Inquiry Context Banner */}
         <Pressable
-          onPress={() => router.push({ pathname: '/job/[id]', params: { id } })}
+          accessibilityRole="button"
+          onPress={() => {
+            if (id.startsWith('direct_')) {
+              if (targetWorkerId) {
+                router.push({ pathname: '/worker/[id]', params: { id: targetWorkerId } });
+              }
+            } else {
+              router.push({ pathname: '/job/[id]', params: { id } });
+            }
+          }}
           style={styles.jobContextBanner}
         >
           <View style={styles.jobBannerLeft}>
             <View style={styles.jobBannerIconBox}>
-              <Text style={styles.jobBannerIcon}>🛠️</Text>
+              <Text style={styles.jobBannerIcon}>{id.startsWith('direct_') ? '💬' : '🛠️'}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text numberOfLines={1} style={styles.jobBannerTitle}>{jobTitle}</Text>
               <Text style={styles.jobBannerSub}>
-                Agreed Rate: LKR {agreedPrice}
+                {id.startsWith('direct_')
+                  ? 'Direct inquiry • Tap to view public profile'
+                  : `Agreed Rate: LKR ${agreedPrice}`}
               </Text>
             </View>
           </View>
@@ -275,7 +252,9 @@ export default function ChatThreadScreen() {
                 {jobStatus.toUpperCase()}
               </Text>
             </View>
-            <Text style={styles.jobBannerDetailsLink}>Details →</Text>
+            <Text style={styles.jobBannerDetailsLink}>
+              {id.startsWith('direct_') ? 'Profile →' : 'Details →'}
+            </Text>
           </View>
         </Pressable>
 
@@ -295,8 +274,18 @@ export default function ChatThreadScreen() {
             ref={flatListRef}
             data={messages}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.messageList}
+            contentContainerStyle={[styles.messageList, messages.length === 0 && styles.emptyListContent]}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyTitle}>Direct Messaging Active</Text>
+                <Text style={styles.emptySubtitle}>
+                  {id.startsWith('direct_')
+                    ? 'Start the conversation! Discuss your service needs, availability, and job scope directly with this tradesperson.'
+                    : 'This job has been assigned. You can now coordinate schedule, location details, and materials in real time.'}
+                </Text>
+              </View>
+            }
             renderItem={({ item }) => (
               <View
                 style={[
@@ -749,5 +738,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     marginLeft: 2,
+  },
+  emptyListContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 40,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 16,
+    fontWeight: '700',
+    color: palette.heading,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
+    color: palette.muted,
+    textAlign: 'center',
+    lineHeight: 19,
   },
 });

@@ -1,5 +1,4 @@
-import { getAuth, signInWithPhoneNumber } from '@react-native-firebase/auth';
-import { getSafeAuth } from './firebase';
+import { signInWithPhoneNumber } from '@react-native-firebase/auth';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -17,8 +16,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { palette, spacing } from '../../Bhashitha/Design/theme';
+import { palette } from '../../Bhashitha/Design/theme';
 import { useAuth } from './AuthContext';
+import { getSafeAuth } from './firebase';
 
 // Load brand identity assets from the shared mobile login assets.
 const arrow = require('../../mobile/assets/images/login/arrow-right.png');
@@ -48,20 +48,20 @@ function normalizePhone(input: string): string {
   return cleaned;
 }
 
-// Phone entry and high-fidelity 6-digit OTP verification screen.
+// Phone entry and high-fidelity 6-digit OTP verification screen using pure Firebase Auth.
 export default function PhoneScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const { width } = useWindowDimensions();
-  const { user, profile, workerReady, signInDemoClient, signInDemoWorker, signInWithPhoneMock, signOut } = useAuth();
+  const { user, profile, workerReady, signOut } = useAuth();
 
-  // If entering registration mode, clear any prior cached demo session to ensure a fresh onboarding experience.
+  // If entering registration mode with an existing session, sign out to ensure a fresh onboarding experience.
   useEffect(() => {
     if (mode === 'register' && user && profile) {
       void signOut();
     }
   }, [mode, user, profile, signOut]);
 
-  // Navigation watcher: advance the user to setup or main tabs as soon as authenticated.
+  // Navigation watcher: advance the user to setup or main tabs as soon as authenticated in Firebase.
   useEffect(() => {
     if (user && profile) {
       if (profile.isWorker && !workerReady) {
@@ -106,7 +106,7 @@ export default function PhoneScreen() {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
-  // Send verification code via native Firebase Phone Auth with fallback to demo verification.
+  // Send verification code directly via pure Firebase Phone Auth.
   async function requestCode() {
     try {
       const normalized = normalizePhone(phone);
@@ -114,47 +114,24 @@ export default function PhoneScreen() {
       setIsError(false);
       setMessage('Requesting verification code…');
 
-      let result: Confirmation | null = null;
-      try {
-        result = await signInWithPhoneNumber(getSafeAuth(), normalized);
-      } catch (nativeErr) {
-        console.warn('[LinkWorks Auth] Native SMS fallback activated:', nativeErr);
-        // Fallback confirmation handler enabling rapid presentation/test verification.
-        result = {
-          confirm: async (otp: string) => {
-            if (otp !== '123456') {
-              throw new Error('Invalid verification code. Please enter 123456.');
-            }
-            if (signInWithPhoneMock) {
-              await signInWithPhoneMock(normalized, mode === 'register');
-            }
-            return null;
-          },
-        };
-      }
+      // Request OTP from Firebase Auth
+      const result = await signInWithPhoneNumber(getSafeAuth(), normalized);
 
       setConfirmation(result);
       setCooldown(60);
-      setMessage('Enter the verification code sent to your phone (test code: 123456).');
+      setMessage('Verification code sent. Enter the 6-digit code below.');
       // Auto-focus the OTP input once code has been sent
       setTimeout(() => otpInputRef.current?.focus(), 300);
     } catch (cause) {
       setIsError(true);
       const raw = cause instanceof Error ? cause.message : String(cause);
-      if (raw.includes('operation-not-allowed') || raw.includes('SMS unable to be sent')) {
-        setMessage(
-          'Firebase SMS quota is restricted or disabled in Firebase Console.\n' +
-          '• Use test code "123456" or one of the Quick Demo buttons below.'
-        );
-      } else {
-        setMessage(raw);
-      }
+      setMessage(raw);
     } finally {
       setBusy(false);
     }
   }
 
-  // Verify the entered 6-digit code against the active confirmation session.
+  // Verify the entered 6-digit code against the active Firebase confirmation session.
   async function confirmCode(codeToVerify?: string) {
     const finalCode = (codeToVerify ?? code).trim();
     if (!confirmation || !/^\d{6}$/.test(finalCode)) {
@@ -166,7 +143,7 @@ export default function PhoneScreen() {
     try {
       setBusy(true);
       setIsError(false);
-      setMessage('Verifying your code…');
+      setMessage('Verifying your code with Firebase…');
       await confirmation.confirm(finalCode);
       setMessage('Phone verified! Loading your LinkWorks account…');
     } catch (cause) {
@@ -185,12 +162,6 @@ export default function PhoneScreen() {
     if (cleanDigits.length === 6) {
       void confirmCode(cleanDigits);
     }
-  }
-
-  // Quick helper to fill in the standard test code (123456) for instant developer testing.
-  function autoFillTestCode() {
-    setCode('123456');
-    void confirmCode('123456');
   }
 
   // Switch back to the phone number editing step so user can correct typos.
@@ -305,7 +276,7 @@ export default function PhoneScreen() {
                   )}
                 </Pressable>
 
-                {/* Shortcut to test with verified test number */}
+                {/* Convenient helper for developer / Firebase test phone number */}
                 <Pressable
                   onPress={() => setPhone('+94 77 123 4567')}
                   style={styles.fillTestPhoneButton}
@@ -397,11 +368,6 @@ export default function PhoneScreen() {
                     </>
                   )}
                 </Pressable>
-
-                {/* Convenient 1-Tap Test Fill Button */}
-                <Pressable onPress={autoFillTestCode} style={styles.autoFillButton}>
-                  <Text style={styles.autoFillButtonText}>⚡ Auto-fill Test Code (123456)</Text>
-                </Pressable>
               </View>
             )}
 
@@ -415,43 +381,11 @@ export default function PhoneScreen() {
               </View>
             ) : null}
 
-            {/* Quick Demo Sign-In Card for Reviewers & Grading */}
-            {signInDemoClient && signInDemoWorker && (
-              <View style={styles.demoCard}>
-                <Text style={styles.demoTitle}>Instant Demo Sign-In (Skip SMS)</Text>
-                <Text style={styles.demoSubtitle}>
-                  Explore the full marketplace experience with pre-seeded accounts:
-                </Text>
-                <View style={styles.demoRow}>
-                  <Pressable
-                    onPress={() => {
-                      signInDemoClient();
-                      router.replace('/(main)/home');
-                    }}
-                    style={({ pressed }) => [styles.demoButton, pressed && styles.pressed]}
-                  >
-                    <Text style={styles.demoButtonRole}>Client Account</Text>
-                    <Text style={styles.demoButtonName}>Kamal (Hiring)</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      signInDemoWorker();
-                      router.replace('/(main)/feed');
-                    }}
-                    style={({ pressed }) => [styles.demoButton, styles.demoWorkerButton, pressed && styles.pressed]}
-                  >
-                    <Text style={[styles.demoButtonRole, styles.demoWorkerRole]}>Worker Account</Text>
-                    <Text style={styles.demoButtonName}>Sunil (Plumber)</Text>
-                  </Pressable>
-                </View>
-              </View>
-            )}
-
             {/* Security & Trust Footer */}
             <View style={styles.trustFooter}>
               <Text style={styles.shieldIcon}>🛡️</Text>
               <Text style={styles.trustText}>
-                Your phone number is encrypted and securely stored. We never share your contact details publicly.
+                Your phone number is authenticated via Firebase security. We never share your contact details publicly.
               </Text>
             </View>
           </View>
@@ -739,21 +673,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     resizeMode: 'contain',
   },
-  autoFillButton: {
-    marginTop: 12,
-    alignItems: 'center',
-    paddingVertical: 8,
-    backgroundColor: '#f0f7f4',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#d2e5dd',
-  },
-  autoFillButtonText: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 12,
-    fontWeight: '700',
-    color: palette.primary,
-  },
   messageBanner: {
     flexDirection: 'row',
     borderRadius: 12,
@@ -787,63 +706,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#b42318',
-  },
-  demoCard: {
-    backgroundColor: '#f8faf9',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e2ece7',
-    padding: 16,
-    marginBottom: 20,
-    gap: 8,
-  },
-  demoTitle: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 13,
-    fontWeight: '700',
-    color: palette.heading,
-  },
-  demoSubtitle: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 12,
-    color: palette.muted,
-    lineHeight: 17,
-  },
-  demoRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-  },
-  demoButton: {
-    flex: 1,
-    backgroundColor: '#e6f1ec',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#c6dfd4',
-  },
-  demoWorkerButton: {
-    backgroundColor: '#e0ece6',
-  },
-  demoButtonRole: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 11,
-    fontWeight: '700',
-    color: palette.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  demoWorkerRole: {
-    color: '#055b49',
-  },
-  demoButtonName: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 12,
-    fontWeight: '600',
-    color: palette.heading,
-    marginTop: 2,
   },
   trustFooter: {
     flexDirection: 'row',
