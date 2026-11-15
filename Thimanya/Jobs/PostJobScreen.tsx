@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Action, Card, Field, Page, Status } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { CITY_CENTERS, findNearestSupportedCity, geohashForPoint, type SupportedCity } from '../../Pasindu/Discovery/geo';
@@ -20,7 +20,17 @@ const CATEGORIES = [
   'Cleaning',
 ] as const;
 
-// Screen for clients to post a new skilled-trade job with budget and live GPS or city location.
+// Realistic sample worksite photo presets for trades, enabling instant 1-tap testing and live presentation demos.
+const SAMPLE_WORKSITE_PHOTOS = [
+  { label: '🚰 Pipe Leak', url: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400' },
+  { label: '⚡ Electrical Panel', url: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400' },
+  { label: '🪚 Wood Fitting', url: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=400' },
+  { label: '🧱 Wall Damage', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400' },
+  { label: '🎨 Wall Paint Area', url: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=400' },
+  { label: '❄️ AC Outdoor Unit', url: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=400' },
+];
+
+// Screen for clients to post a new skilled-trade job with budget, photos, and live GPS or city location.
 export default function PostJobScreen() {
   const { user, profile } = useAuth();
   const params = useLocalSearchParams<{ prefillCategory?: string; workerName?: string }>();
@@ -40,10 +50,54 @@ export default function PostJobScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  // Attached worksite photos list (up to 5 images)
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [customPhotoUrl, setCustomPhotoUrl] = useState('');
+
   // Live GPS state via Fused Location Provider
   const [useGpsCoords, setUseGpsCoords] = useState(false);
   const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locatingGps, setLocatingGps] = useState(false);
+
+  // Toggle attaching a realistic sample worksite photo with 1 tap (useful for presentations)
+  function togglePresetPhoto(url: string) {
+    if (photos.includes(url)) {
+      setPhotos((prev) => prev.filter((p) => p !== url));
+    } else {
+      if (photos.length >= 5) {
+        setError('Maximum 5 worksite photos allowed.');
+        return;
+      }
+      setPhotos((prev) => [...prev, url]);
+      setError('');
+    }
+  }
+
+  // Add custom photo URL entered by client
+  function addCustomPhoto() {
+    const trimmed = customPhotoUrl.trim();
+    if (!trimmed) return;
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('data:image/')) {
+      setError('Please enter a valid image URL starting with http:// or https://');
+      return;
+    }
+    if (photos.length >= 5) {
+      setError('Maximum 5 worksite photos allowed.');
+      return;
+    }
+    if (photos.includes(trimmed)) {
+      setError('This photo has already been added.');
+      return;
+    }
+    setPhotos((prev) => [...prev, trimmed]);
+    setCustomPhotoUrl('');
+    setError('');
+  }
+
+  // Remove attached photo by index
+  function removePhoto(index: number) {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  }
 
   // Acquire high-accuracy device coordinates via Fused Location Provider client
   async function detectGps() {
@@ -130,7 +184,7 @@ export default function PostJobScreen() {
         title: title.trim(),
         description: description.trim(),
         categoryId: category,
-        photos: [],
+        photos,
         budgetMinLkr,
         budgetMaxLkr,
         geo,
@@ -223,6 +277,75 @@ export default function PostJobScreen() {
           value={preferredDate}
           onChangeText={setPreferredDate}
         />
+      </Card>
+
+      {/* Worksite Photos Attachment Card: Allows clients to add trade sample photos or custom URLs */}
+      <Card title="Worksite Photos (Optional)">
+        <Text style={styles.sectionSubtitle}>
+          Attach photos to help tradespeople understand the job scope and give accurate quotes ({photos.length}/5):
+        </Text>
+
+        {/* Attached Photos Preview Grid with Remove button */}
+        {photos.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.photosScrollRow}
+          >
+            {photos.map((url, idx) => (
+              <View key={idx} style={styles.photoPreviewCard}>
+                <Image source={{ uri: url }} style={styles.photoPreviewImage} resizeMode="cover" />
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => removePhoto(idx)}
+                  style={styles.photoRemoveBtn}
+                >
+                  <Text style={styles.photoRemoveBtnText}>✕</Text>
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
+        {/* Quick Sample Presets for Testing & Live Demonstrations */}
+        <Text style={styles.sectionLabel}>Quick Worksite Samples (Tap to attach):</Text>
+        <View style={styles.chipsWrap}>
+          {SAMPLE_WORKSITE_PHOTOS.map((sample) => {
+            const isAttached = photos.includes(sample.url);
+            return (
+              <Pressable
+                key={sample.label}
+                accessibilityRole="button"
+                onPress={() => togglePresetPhoto(sample.url)}
+                style={[styles.chip, isAttached && styles.selectedChip]}
+              >
+                <Text style={[styles.chipText, isAttached && styles.selectedChipText]}>
+                  {isAttached ? `✓ ${sample.label}` : `+ ${sample.label}`}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Custom Photo URL Input */}
+        <View style={styles.customPhotoRow}>
+          <View style={{ flex: 1 }}>
+            <Field
+              label="Or Add Image by Web URL"
+              placeholder="https://example.com/worksite.jpg"
+              value={customPhotoUrl}
+              onChangeText={setCustomPhotoUrl}
+              autoCapitalize="none"
+            />
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={addCustomPhoto}
+            style={({ pressed }) => [styles.addPhotoBtn, pressed && { opacity: 0.8 }]}
+          >
+            <Text style={styles.addPhotoBtnText}>+ Add</Text>
+          </Pressable>
+        </View>
       </Card>
 
       <Card title="Job Location">
@@ -353,5 +476,67 @@ const styles = StyleSheet.create({
   },
   gpsDetectTextActive: {
     color: '#15803d',
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: palette.muted,
+    marginBottom: spacing.xs,
+    lineHeight: 18,
+  },
+  photosScrollRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  photoPreviewCard: {
+    width: 90,
+    height: 70,
+    borderRadius: 10,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#e2ece7',
+    backgroundColor: '#f4f4f5',
+  },
+  photoPreviewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoRemoveBtn: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoRemoveBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  customPhotoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  addPhotoBtn: {
+    backgroundColor: palette.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addPhotoBtnText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

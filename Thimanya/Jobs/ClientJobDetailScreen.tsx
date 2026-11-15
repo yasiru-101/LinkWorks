@@ -31,7 +31,7 @@ import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 import { ApplyModal } from '../Applications/ApplyModal';
 import { canTransitionJob } from '../JobContracts/validation';
-import { loadPersistentJobs, removePersistentJob } from './job-storage';
+import { loadPersistentApplications, loadPersistentJobs, removePersistentJob } from './job-storage';
 
 const arrow = require('../../mobile/assets/images/login/arrow-right.png');
 
@@ -123,14 +123,41 @@ export default function ClientJobDetailScreen() {
       try {
         const appsSnap = await getDocs(collection(getFirestore(), 'jobs', id, 'applications'));
         if (!appsSnap.empty) {
-          apps = appsSnap.docs.map((d) => d.data() as DetailedApplication);
+          apps = appsSnap.docs.map((d) => {
+            const data = d.data() as DetailedApplication;
+            const matched = SEED_WORKERS.find((w) => w.userId === data.workerId);
+            return {
+              ...data,
+              workerName: data.workerName || matched?.displayName || 'Verified Tradesperson',
+              ratingAvg: data.ratingAvg || matched?.ratingAvg || 4.8,
+              ratingCount: data.ratingCount || matched?.ratingCount || 10,
+              distanceKm: data.distanceKm || 2.5,
+            };
+          });
         }
       } catch {
-        // Fall back in preview mode
+        // Fall back gracefully in preview mode
       }
 
-      if (apps.length === 0) {
-        apps = DEMO_JOB_APPLICATIONS[id] || DEMO_JOB_APPLICATIONS['job-colombo-kitchen-pipe'] || [];
+      // Check persistent applications saved on device storage
+      try {
+        const persistentApps = await loadPersistentApplications(id);
+        if (persistentApps && persistentApps.length > 0) {
+          const existingIds = new Set(apps.map((a) => a.workerId));
+          for (const pa of persistentApps) {
+            if (!existingIds.has(pa.workerId)) {
+              apps.push(pa as DetailedApplication);
+            }
+          }
+        }
+      } catch {
+        // Fall back gracefully
+      }
+
+      // Only attach demo quotes for the specific pre-seeded mock demo job.
+      // Newly created jobs MUST start with 0 quotes so workers can apply realistically.
+      if (apps.length === 0 && id === 'job-colombo-kitchen-pipe') {
+        apps = DEMO_JOB_APPLICATIONS[id] || [];
       }
       setApplications(apps);
 
@@ -403,20 +430,29 @@ export default function ClientJobDetailScreen() {
             <Text style={styles.descriptionText}>{job.description}</Text>
           </View>
 
-          {/* Attached Worksite Photos Preview */}
-          <View style={styles.photosSection}>
-            <Text style={styles.photosLabel}>Attached Worksite Photos (2):</Text>
-            <View style={styles.photoThumbnailsRow}>
-              <View style={styles.photoBox}>
-                <Text style={styles.photoIcon}>📷</Text>
-                <Text style={styles.photoCaption}>Valve leak area</Text>
-              </View>
-              <View style={styles.photoBox}>
-                <Text style={styles.photoIcon}>📷</Text>
-                <Text style={styles.photoCaption}>Pressure pump fitting</Text>
-              </View>
+          {/* Worksite Photos: Displayed only if photos were actually attached by the client */}
+          {job.photos && job.photos.length > 0 && (
+            <View style={styles.photosSection}>
+              <Text style={styles.photosLabel}>
+                Attached Worksite Photos ({job.photos.length}):
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.photoThumbnailsRow}
+              >
+                {job.photos.map((photoUrl, idx) => (
+                  <View key={idx} style={styles.photoThumbnailCard}>
+                    <Image
+                      source={{ uri: photoUrl }}
+                      style={styles.photoThumbnailImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                ))}
+              </ScrollView>
             </View>
-          </View>
+          )}
         </View>
 
         {/* Owner Job Management Actions: Allows owner to permanently remove their job post */}
@@ -574,7 +610,7 @@ export default function ClientJobDetailScreen() {
                                 !isRecommended && styles.hireButtonSecondaryText,
                               ]}
                             >
-                              Accept Quote &amp; Hire Sunil
+                              Accept Quote &amp; Hire {quote.workerName?.split(' ')[0] || 'Tradesperson'}
                             </Text>
                             <Image source={arrow} style={styles.arrowIcon} />
                           </>
@@ -814,6 +850,19 @@ const styles = StyleSheet.create({
   photoThumbnailsRow: {
     flexDirection: 'row',
     gap: 10,
+  },
+  photoThumbnailCard: {
+    width: 140,
+    height: 100,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#f4f4f5',
+    borderWidth: 1,
+    borderColor: '#dcece4',
+  },
+  photoThumbnailImage: {
+    width: '100%',
+    height: '100%',
   },
   photoBox: {
     flex: 1,

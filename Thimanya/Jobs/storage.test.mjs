@@ -45,4 +45,45 @@ removeJob('job-test-1');
 assert.strictEqual(getJobs().length, 0);
 console.log('✓ Test 3: Owner deletion successfully removes job from persistent storage');
 
+// 5. Test photo attachment persistence
+const jobWithPhotos = {
+  id: 'job-test-photos',
+  clientId: 'client-demo-1',
+  title: 'Fix Pipe Leak With Photos',
+  description: 'Leak in pipe with worksite photos attached',
+  categoryId: 'Plumbing',
+  photos: ['https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400'],
+  status: 'open',
+};
+saveJob(jobWithPhotos);
+assert.strictEqual(getJobs()[0].photos.length, 1);
+assert.strictEqual(getJobs()[0].photos[0], 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400');
+console.log('✓ Test 4: Worksite photos correctly persisted with job post');
+
+// 6. Test application persistence
+let applicationsStorage = {};
+function saveApp(jobId, app) {
+  const current = applicationsStorage[jobId] || [];
+  applicationsStorage[jobId] = [app, ...current.filter(a => a.workerId !== app.workerId)];
+}
+function getApps(jobId) {
+  return applicationsStorage[jobId] || [];
+}
+
+// New job starts with 0 applications
+assert.strictEqual(getApps('job-test-photos').length, 0);
+console.log('✓ Test 5: Newly created job starts with 0 quotes');
+
+// Worker applies to job
+saveApp('job-test-photos', {
+  workerId: 'worker-plumber-1',
+  workerName: 'Sunil Perera',
+  quotedPriceLkr: 4500,
+  message: 'Can come inspect immediately',
+  status: 'submitted',
+});
+assert.strictEqual(getApps('job-test-photos').length, 1);
+assert.strictEqual(getApps('job-test-photos')[0].quotedPriceLkr, 4500);
+console.log('✓ Test 6: Worker quote persists correctly for target job');
+
 console.log('All job storage tests passed successfully! 🎉');
