@@ -1,6 +1,6 @@
 import { doc, getDocFromServer, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Action, Card, Field, Page, Status } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
@@ -59,6 +59,37 @@ export default function WorkerSetupScreen() {
   const [available, setAvailable] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // Load existing worker profile details on mount so current skills, rates, and coverage are pre-filled when editing.
+  useEffect(() => {
+    let active = true;
+    async function loadWorkerProfile() {
+      if (!user) return;
+      try {
+        const db = getSafeFirestore();
+        const reference = doc(db, 'workerProfiles', user.uid);
+        const existing = await getDocFromServer(reference);
+        if (active && existing.exists()) {
+          const data = existing.data();
+          if (data) {
+            if (data.city && data.city in CITY_CENTERS) setCity(data.city as SupportedCity);
+            if (Array.isArray(data.skills) && data.skills.length > 0) setSkills(data.skills);
+            if (data.bio) setBio(data.bio);
+            if (typeof data.experienceYears === 'number') setExperience(String(data.experienceYears));
+            if (typeof data.dayRateLkr === 'number') setRate(String(data.dayRateLkr));
+            if (typeof data.serviceRadiusKm === 'number') setRadius(data.serviceRadiusKm);
+            if (typeof data.isAvailable === 'boolean') setAvailable(data.isAvailable);
+          }
+        }
+      } catch {
+        // Fall back gracefully in offline or demo preview environments.
+      }
+    }
+    void loadWorkerProfile();
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   // Toggle a preset trade skill without clearing custom skills.
   function togglePresetSkill(skillId: string) {
@@ -150,12 +181,20 @@ export default function WorkerSetupScreen() {
         { merge: true }
       );
       await refreshProfile();
-      router.replace('/(main)/feed');
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(main)/feed');
+      }
     } catch (cause) {
       // In offline or web mock mode, complete the transition.
       console.warn('[WorkerSetup] Server sync notice:', cause);
       await refreshProfile();
-      router.replace('/(main)/feed');
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(main)/feed');
+      }
     } finally {
       setBusy(false);
     }
@@ -163,6 +202,25 @@ export default function WorkerSetupScreen() {
 
   return (
     <Page>
+      {/* Top Navigation Row with Back Button */}
+      <View style={styles.topRow}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(main)/profile');
+            }
+          }}
+          style={styles.backButton}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </Pressable>
+        <Text style={styles.headerTitle}>Worker Profile</Text>
+        <View style={{ width: 48 }} />
+      </View>
+
       <Text style={styles.title}>Worker Profile &amp; Services</Text>
       <Text style={styles.help}>
         Configure your trade categories, custom skills, daily rate, and coverage area so clients can discover and hire you.
@@ -342,6 +400,27 @@ export default function WorkerSetupScreen() {
 }
 
 const styles = StyleSheet.create({
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  backButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  backButtonText: {
+    color: palette.primary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  headerTitle: {
+    color: palette.heading,
+    fontSize: 16,
+    fontWeight: '800',
+    fontFamily: 'Plus Jakarta Sans',
+  },
   title: {
     color: palette.heading,
     fontFamily: 'Plus Jakarta Sans',

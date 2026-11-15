@@ -29,6 +29,7 @@ function ProtectedStack() {
     </Stack.Protected>
     <Stack.Protected guard={!!user && !!profile && (!profile.isWorker || workerReady)}>
       <Stack.Screen name="(main)" />
+      <Stack.Screen name="worker-setup" />
       <Stack.Screen name="post-job" options={{ presentation: 'modal' }} />
       <Stack.Screen name="job/[id]" />
       <Stack.Screen name="worker/[id]" />

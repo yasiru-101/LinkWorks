@@ -1,63 +1,16 @@
-import { doc, getDoc, getFirestore, serverTimestamp, updateDoc } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Action, Card, Page, Status } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { useAuth } from '../Auth/AuthContext';
 
-// Comprehensive Settings Screen managing account details, worker availability, role toggles, and legal disclosures.
+// Comprehensive Settings Screen managing account details, worker services, role toggles, and legal disclosures.
 export default function SettingsScreen() {
   const { user, profile, workerReady, selectRole, signOut, signInDemoClient, signInDemoWorker } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [isAvailable, setIsAvailable] = useState(true);
-  const [updatingAvailability, setUpdatingAvailability] = useState(false);
-
-  // Load the worker's current availability state on screen mount.
-  useEffect(() => {
-    let active = true;
-    async function loadAvailability() {
-      if (!user || !profile?.isWorker) return;
-      try {
-        const workerSnap = await getDoc(doc(getFirestore(), 'workerProfiles', user.uid));
-        if (active && workerSnap.exists()) {
-          const data = workerSnap.data();
-          if (data && typeof data.isAvailable === 'boolean') {
-            setIsAvailable(data.isAvailable);
-          }
-        }
-      } catch {
-        // Fall back gracefully in offline or web mock environments.
-      }
-    }
-    void loadAvailability();
-    return () => {
-      active = false;
-    };
-  }, [user, profile?.isWorker]);
-
-  // Toggle availability status in Firestore so clients only discover active workers.
-  async function toggleAvailability(newValue: boolean) {
-    setIsAvailable(newValue);
-    if (!user) return;
-    try {
-      setUpdatingAvailability(true);
-      setError('');
-      // Update availability status and server timestamp to comply with Firestore validation rules
-      await updateDoc(doc(getFirestore(), 'workerProfiles', user.uid), {
-        isAvailable: newValue,
-        updatedAt: serverTimestamp(),
-      });
-      setSuccessMsg(newValue ? 'You are now visible to nearby clients!' : 'Availability paused. You will not appear in search.');
-    } catch (cause) {
-      // In offline/web demo mode, state change remains local
-      setSuccessMsg(newValue ? 'Availability set to Active (demo mode)' : 'Availability set to Paused (demo mode)');
-    } finally {
-      setUpdatingAvailability(false);
-    }
-  }
 
   // Switch between hiring as a client and offering services as a worker.
   async function handleSwitchRole() {
@@ -139,25 +92,12 @@ export default function SettingsScreen() {
         ) : null}
       </Card>
 
-      {/* Worker Availability & Services Card */}
-      {profile?.isWorker ? (
-        <Card title="Worker Services &amp; Availability">
-          <View style={styles.switchRow}>
-            <View style={styles.switchTextContainer}>
-              <Text style={styles.switchTitle}>Available for New Work</Text>
-              <Text style={styles.switchSubtitle}>
-                Appear in client searches and receive nearby job notifications.
-              </Text>
-            </View>
-            <Switch
-              value={isAvailable}
-              onValueChange={(val) => { void toggleAvailability(val); }}
-              disabled={updatingAvailability}
-              trackColor={{ false: '#d1d5db', true: '#86efac' }}
-              thumbColor={isAvailable ? palette.brand : '#f4f4f5'}
-            />
-          </View>
-
+      {/* Worker Services Card: Shown exclusively when in Worker Mode */}
+      {profile?.activeRole === 'worker' ? (
+        <Card title="Worker Services &amp; Profile">
+          <Text style={styles.workerServicesSubtitle}>
+            Update your public trades, specialty skills, daily rates, and service coverage radius:
+          </Text>
           <Action
             label="🛠️ Edit Skills, Rates &amp; Service Radius"
             secondary
@@ -310,26 +250,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: palette.heading,
   },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  switchTextContainer: {
-    flex: 1,
-    gap: 2,
-  },
-  switchTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: palette.heading,
-  },
-  switchSubtitle: {
-    fontSize: 12,
+  workerServicesSubtitle: {
+    fontSize: 13,
     color: palette.muted,
-    lineHeight: 16,
+    lineHeight: 18,
+    marginBottom: spacing.xs,
   },
   appInfoRow: {
     flexDirection: 'row',
