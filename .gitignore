@@ -1,7 +1,6 @@
-# Keep project readme files and the planning document local.
-README*
-readme*
+# Keep private planning documents and internal notes local.
 /LinkWorks_React_Native_Project_Plan.docx
+/mobile/README.md
 /AGENTS.md
 /PROJECT_IMPLEMENTATION_PLAN.md
 /docs
