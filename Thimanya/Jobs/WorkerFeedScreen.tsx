@@ -6,12 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CitySelectorModal } from '../../Bhashitha/Design/CitySelectorModal';
 import { JobCard } from '../../Bhashitha/Design/JobCard';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
-import { getLocalDynamicJobs, SEED_JOBS, SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
+import { SEED_JOBS, SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
 import type { Job, WorkerProfile } from '../../mobile/src/types/domain';
 import { distanceKm, type SupportedCity } from '../../Pasindu/Discovery/geo';
 import { useSearchCenter } from '../../Pasindu/Discovery/search-center';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
+import { getPersistentJobs, loadPersistentJobs } from './job-storage';
 
 const RADIUS_OPTIONS = [5, 10, 15, 25, 50];
 
@@ -58,8 +59,12 @@ export default function WorkerFeedScreen() {
   const loadMatchingJobs = useCallback(async () => {
     try {
       setError(null);
+
+      // 1. Load persistent jobs from physical device flash storage
+      const savedJobs = await loadPersistentJobs();
       let list: Array<Job & { id: string }> = [];
 
+      // 2. Fetch live open jobs from Cloud Firestore
       try {
         const db = getSafeFirestore();
         const snapshot = await getDocs(
@@ -76,9 +81,9 @@ export default function WorkerFeedScreen() {
         list = SEED_JOBS.filter((j) => j.status === 'open');
       }
 
-      // Merge open dynamic jobs created during this app session
-      const dynamicJobs = getLocalDynamicJobs().filter((j) => j.status === 'open');
-      list = [...dynamicJobs, ...list.filter((j) => !dynamicJobs.some((d) => d.id === j.id))];
+      // Merge persistent open jobs created on this device
+      const persistentOpen = savedJobs.filter((j) => j.status === 'open');
+      list = [...persistentOpen, ...list.filter((j) => !persistentOpen.some((d) => d.id === j.id))];
 
       if (list.length === 0) {
         list = SEED_JOBS.filter((j) => j.status === 'open');

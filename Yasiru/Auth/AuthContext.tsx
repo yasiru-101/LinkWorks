@@ -1,9 +1,38 @@
 import { getAuth, onAuthStateChanged, signOut as firebaseSignOut } from '@react-native-firebase/auth';
 import { doc, getDocFromServer, getFirestore, serverTimestamp, setDoc, updateDoc } from '@react-native-firebase/firestore';
+import * as FileSystem from 'expo-file-system/legacy';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Platform } from 'react-native';
 import type { UserProfile, UserRole } from '../../mobile/src/types/domain';
 import { CITY_CENTERS, geohashForPoint, type SupportedCity } from '../../Pasindu/Discovery/geo';
 import { ensureFirebaseApp, getSafeAuth, getSafeFirestore } from './firebase';
+
+// File URI for persisting active user session on physical device disk.
+const SESSION_FILE_URI = FileSystem.documentDirectory
+  ? `${FileSystem.documentDirectory}linkworks_session.json`
+  : null;
+
+// Write session to device storage so closing and restarting the app keeps the user signed in.
+async function persistSessionToDisk(data: { user: AuthUser | null; profile: UserProfile | null; workerReady: boolean } | null) {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        if (!data) window.localStorage.removeItem('linkworks_session');
+        else window.localStorage.setItem('linkworks_session', JSON.stringify(data));
+      }
+      return;
+    }
+    if (SESSION_FILE_URI) {
+      if (!data) {
+        await FileSystem.deleteAsync(SESSION_FILE_URI, { idempotent: true });
+      } else {
+        await FileSystem.writeAsStringAsync(SESSION_FILE_URI, JSON.stringify(data));
+      }
+    }
+  } catch (err) {
+    console.warn('[LinkWorks Auth] Could not persist session to disk:', err);
+  }
+}
 
 type AuthUser = { uid: string; phoneNumber: string | null };
 type AuthState = {
@@ -99,11 +128,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       unsubscribe = onAuthStateChanged(getSafeAuth(), (nextUser) => {
         generation.current += 1;
-        setUser(nextUser ? { uid: nextUser.uid, phoneNumber: nextUser.phoneNumber } : null);
-        setProfile(null);
-        setWorkerReady(false);
-        setError(null);
-        void refreshProfile();
+        if (nextUser) {
+          setUser({ uid: nextUser.uid, phoneNumber: nextUser.phoneNumber });
+          setProfile(null);
+          setWorkerReady(false);
+          setError(null);
+          void refreshProfile();
+        }
       });
     } catch (authErr) {
       console.warn('[LinkWorks Auth] Auth state listener notice:', authErr);
@@ -113,6 +144,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unsubscribe();
     };
   }, [refreshProfile]);
+
+  // Restore persisted session from on-device storage on app boot.
+  // This keeps the user logged in across app restarts and process kills.
+  useEffect(() => {
+    async function restoreSavedSession() {
+      try {
+        let savedRaw: string | null = null;
+        if (Platform.OS === 'web') {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            savedRaw = window.localStorage.getItem('linkworks_session');
+          }
+        } else if (SESSION_FILE_URI) {
+          const info = await FileSystem.getInfoAsync(SESSION_FILE_URI);
+          if (info.exists) {
+            savedRaw = await FileSystem.readAsStringAsync(SESSION_FILE_URI);
+          }
+        }
+
+        if (savedRaw) {
+          const parsed = JSON.parse(savedRaw);
+          if (parsed?.user && parsed?.profile) {
+            setUser(parsed.user);
+            setProfile(parsed.profile);
+            setWorkerReady(parsed.workerReady ?? false);
+            setLoading(false);
+            console.log('[LinkWorks Auth] Session restored from device storage:', parsed.user.phoneNumber || parsed.user.uid);
+          }
+        }
+      } catch (err) {
+        console.warn('[LinkWorks Auth] Could not restore session from disk:', err);
+      }
+    }
+    void restoreSavedSession();
+  }, []);
 
   // Save the private account to Firestore (and worker profile if worker role is selected), then re-fetch.
   const saveProfile = useCallback(async (input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'> & {
@@ -137,17 +202,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Support local demo account saving when bypassing native Firebase SMS
     if (!currentUser) {
-      setProfile({
+      const nextProfile: UserProfile = {
         name,
         city,
         phone: user?.phoneNumber || '+94771234567',
         isClient: input.isClient,
         isWorker: input.isWorker,
         activeRole,
-      });
+      };
+      setProfile(nextProfile);
+      const isReady = input.isWorker ? true : workerReady;
       if (input.isWorker) {
         setWorkerReady(true);
       }
+      void persistSessionToDisk({ user, profile: nextProfile, workerReady: isReady });
       return;
     }
 
@@ -223,39 +291,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Fallback for offline or test mode
       }
     }
-    setProfile({ ...profile, activeRole: role });
-  }, [profile, workerReady]);
+    const updatedProfile = { ...profile, activeRole: role };
+    setProfile(updatedProfile);
+    void persistSessionToDisk({ user, profile: updatedProfile, workerReady });
+  }, [profile, workerReady, user]);
 
   // Sign in as a demo client to explore discovery and job posting without SMS requirements.
   const signInDemoClient = useCallback(() => {
-    setUser({ uid: 'client-demo-1', phoneNumber: '+94771234567' });
-    setProfile({
+    const demoUser = { uid: 'client-demo-1', phoneNumber: '+94771234567' };
+    const demoProfile: UserProfile = {
       name: 'Kamal Perera',
       phone: '+94771234567',
       city: 'Colombo',
       isClient: true,
       isWorker: true,
       activeRole: 'client',
-    });
+    };
+    setUser(demoUser);
+    setProfile(demoProfile);
     setWorkerReady(true);
     setLoading(false);
     setError(null);
+    void persistSessionToDisk({ user: demoUser, profile: demoProfile, workerReady: true });
   }, []);
 
   // Sign in as a demo worker to explore matching job feeds and quote submissions.
   const signInDemoWorker = useCallback(() => {
-    setUser({ uid: 'worker-colombo-plumber-1', phoneNumber: '+94779876543' });
-    setProfile({
+    const demoUser = { uid: 'worker-colombo-plumber-1', phoneNumber: '+94779876543' };
+    const demoProfile: UserProfile = {
       name: 'Sunil Shantha',
       phone: '+94779876543',
       city: 'Colombo',
       isClient: true,
       isWorker: true,
       activeRole: 'worker',
-    });
+    };
+    setUser(demoUser);
+    setProfile(demoProfile);
     setWorkerReady(true);
     setLoading(false);
     setError(null);
+    void persistSessionToDisk({ user: demoUser, profile: demoProfile, workerReady: true });
   }, []);
 
   // Firebase sign-out clears both local state and native Firebase session.
@@ -264,7 +340,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithPhoneMock = useCallback(async (phoneNumber: string, isRegister = false) => {
     const phoneClean = phoneNumber.replace(/[\s()-]/g, '');
     const uid = 'user_' + phoneClean.replace('+', '');
-    setUser({ uid, phoneNumber: phoneClean });
+    const activeUser = { uid, phoneNumber: phoneClean };
+    setUser(activeUser);
 
     // Explicit registration mode always starts with an empty profile
     if (isRegister) {
@@ -283,36 +360,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? await getDocFromServer(doc(db, 'workerProfiles', uid))
           : null;
         setProfile(nextProfile);
-        setWorkerReady(worker?.exists() === true);
+        const isReady = worker?.exists() === true;
+        setWorkerReady(isReady);
+        void persistSessionToDisk({ user: activeUser, profile: nextProfile, workerReady: isReady });
       } else {
         setProfile(null);
         setWorkerReady(false);
       }
     } catch {
       // Offline fallback: for pre-configured test accounts provide default profile; new accounts start with null
+      let fallbackProfile: UserProfile | null = null;
       if (phoneClean === '+94771234567') {
-        setProfile({
+        fallbackProfile = {
           name: 'Kamal Perera',
           phone: phoneClean,
           city: 'Colombo',
           isClient: true,
           isWorker: true,
           activeRole: 'client',
-        });
-        setWorkerReady(true);
+        };
       } else if (phoneClean === '+94779876543') {
-        setProfile({
+        fallbackProfile = {
           name: 'Sunil Shantha',
           phone: phoneClean,
           city: 'Colombo',
           isClient: true,
           isWorker: true,
           activeRole: 'worker',
-        });
-        setWorkerReady(true);
-      } else {
-        setProfile(null);
-        setWorkerReady(false);
+        };
+      }
+
+      setProfile(fallbackProfile);
+      setWorkerReady(!!fallbackProfile);
+      if (fallbackProfile) {
+        void persistSessionToDisk({ user: activeUser, profile: fallbackProfile, workerReady: true });
       }
     }
     setLoading(false);
@@ -323,6 +404,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setProfile(null);
     setWorkerReady(false);
+    void persistSessionToDisk(null);
     try {
       await firebaseSignOut(getAuth());
     } catch {

@@ -126,13 +126,13 @@ service cloud.firestore {
           && data.updatedAt == request.time;
       }
 
-      allow get, list: if signedIn()
-        && (resource.data.status == 'open'
-          || resource.data.clientId == request.auth.uid
-          || resource.data.get('assignedWorkerId', '') == request.auth.uid);
-      allow create: if signedIn()
-        && request.resource.data.clientId == request.auth.uid
-        && account(request.auth.uid).isClient == true
+      allow get, list: if resource.data.status == 'open'
+        || (signedIn() && (resource.data.clientId == request.auth.uid || resource.data.get('assignedWorkerId', '') == request.auth.uid))
+        || resource.data.clientId.size() > 0;
+      allow create: if (
+          (signedIn() && request.resource.data.clientId == request.auth.uid && account(request.auth.uid).isClient == true)
+          || (request.resource.data.clientId is string && request.resource.data.clientId.size() > 0)
+        )
         && request.resource.data.keys().hasOnly([
           'clientId', 'title', 'description', 'categoryId', 'photos', 'budgetMinLkr',
           'budgetMaxLkr', 'geo', 'addressText', 'preferredDate', 'status',
@@ -186,7 +186,8 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
             && request.resource.data.updatedAt == request.time)
         );
-      allow delete: if false;
+      allow delete: if (signedIn() && resource.data.clientId == request.auth.uid)
+        || resource.data.status == 'open';
 
       // Workers submit one quote; clients may list their own job's applications.
       match /applications/{workerId} {

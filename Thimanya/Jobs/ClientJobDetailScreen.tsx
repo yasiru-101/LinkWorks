@@ -12,8 +12,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,12 +25,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { ReviewModal } from '../../Bhashitha/Reviews/ReviewModal';
-import { getLocalDynamicJobs, SEED_JOBS, SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
+import { SEED_JOBS, SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
 import type { Job, JobApplication, JobStatus } from '../../mobile/src/types/domain';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 import { ApplyModal } from '../Applications/ApplyModal';
 import { canTransitionJob } from '../JobContracts/validation';
+import { loadPersistentJobs, removePersistentJob } from './job-storage';
 
 const arrow = require('../../mobile/assets/images/login/arrow-right.png');
 
@@ -102,8 +105,9 @@ export default function ClientJobDetailScreen() {
       }
 
       if (!currentJob) {
+        const persistent = await loadPersistentJobs();
         currentJob =
-          getLocalDynamicJobs().find((j) => j.id === id) ??
+          persistent.find((j) => j.id === id) ??
           SEED_JOBS.find((j) => j.id === id) ??
           null;
       }
@@ -295,9 +299,41 @@ export default function ClientJobDetailScreen() {
     );
   }
 
-  const isClient = user?.uid === job.clientId || user?.uid === 'demo-client-1' || profile?.activeRole === 'client';
+  const isClient = user?.uid === job.clientId || user?.uid === 'demo-client-1' || user?.uid === 'client-demo-1' || profile?.activeRole === 'client';
   const isAssignedWorker = user?.uid === job.assignedWorkerId;
   const isParticipant = isClient || isAssignedWorker;
+  const isOwner = user?.uid === job.clientId || (user?.uid === 'client-demo-1' && job.clientId === 'client-demo-1') || isClient;
+
+  // Permanently delete this job from Cloud Firestore and physical device storage.
+  async function handleDeleteJob() {
+    if (!job) return;
+
+    const executeDelete = async () => {
+      try {
+        setBusy(true);
+        await removePersistentJob(job.id);
+        router.replace('/(main)/jobs');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not delete job.');
+        setBusy(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm('Are you sure you want to permanently delete this job post?')) {
+        await executeDelete();
+      }
+    } else {
+      Alert.alert(
+        'Delete Job Post',
+        'Are you sure you want to permanently delete this job post? It will be removed from Cloud Firestore and your device.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: () => void executeDelete() },
+        ]
+      );
+    }
+  }
 
   const budgetText =
     job.budgetMinLkr && job.budgetMaxLkr
@@ -382,6 +418,20 @@ export default function ClientJobDetailScreen() {
             </View>
           </View>
         </View>
+
+        {/* Owner Job Management Actions: Allows owner to permanently remove their job post */}
+        {isOwner && (job.status === 'open' || job.status === 'cancelled') && (
+          <View style={styles.ownerActionsCard}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void handleDeleteJob()}
+              style={({ pressed }) => [styles.deleteJobButton, pressed && { opacity: 0.8 }]}
+              disabled={busy}
+            >
+              <Text style={styles.deleteJobButtonText}>🗑 Remove Job Post</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Post-Assignment Contact & Active Chat Section */}
         {job.status !== 'open' && job.status !== 'cancelled' && (
@@ -1107,5 +1157,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: palette.primary,
+  },
+  ownerActionsCard: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  deleteJobButton: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1.5,
+    borderColor: '#F87171',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteJobButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#DC2626',
   },
 });

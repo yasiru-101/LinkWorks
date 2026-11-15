@@ -6,10 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Action } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { JobCard } from '../../Bhashitha/Design/JobCard';
-import { getLocalDynamicJobs, SEED_JOBS } from '../../Bhashitha/Seed/seed-data';
+import { SEED_JOBS } from '../../Bhashitha/Seed/seed-data';
 import type { Job, JobStatus } from '../../mobile/src/types/domain';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
+import { getPersistentJobs, loadPersistentJobs } from './job-storage';
 
 type StatusFilter = 'all' | JobStatus;
 
@@ -30,13 +31,17 @@ export default function MyJobsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load client's posted jobs from Firestore and local dynamic session store.
+  // Load client's posted jobs from on-device flash storage and Cloud Firestore.
   const loadJobs = useCallback(async () => {
     if (!user) return;
     try {
       setError(null);
+
+      // 1. Load persistent jobs from physical device flash storage
+      const savedJobs = await loadPersistentJobs();
       let list: Array<Job & { id: string }> = [];
 
+      // 2. Fetch live jobs from Cloud Firestore
       try {
         const db = getSafeFirestore();
         const snapshot = await getDocs(
@@ -53,15 +58,15 @@ export default function MyJobsScreen() {
         list = SEED_JOBS.filter((j) => j.clientId === 'client-demo-1');
       }
 
-      // Merge dynamic jobs posted during this app session
-      const dynamicJobs = getLocalDynamicJobs().filter(
+      // Merge persistent jobs belonging to this user
+      const userPersistent = savedJobs.filter(
         (j) => j.clientId === user.uid || (user.uid === 'client-demo-1' && j.clientId === 'client-demo-1')
       );
 
-      // Combine dynamic jobs on top, avoiding duplicate ids
+      // Combine persistent jobs on top, avoiding duplicate ids
       const combined = [
-        ...dynamicJobs,
-        ...list.filter((j) => !dynamicJobs.some((d) => d.id === j.id)),
+        ...userPersistent,
+        ...list.filter((j) => !userPersistent.some((d) => d.id === j.id)),
       ];
 
       setJobs(combined);

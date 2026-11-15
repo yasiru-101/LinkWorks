@@ -1,15 +1,13 @@
-import { addDoc, collection, serverTimestamp } from '@react-native-firebase/firestore';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Action, Card, Field, Page, Status } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
-import { addLocalDynamicJob } from '../../Bhashitha/Seed/seed-data';
 import { CITY_CENTERS, findNearestSupportedCity, geohashForPoint, type SupportedCity } from '../../Pasindu/Discovery/geo';
 import { getCurrentDeviceLocation, isFusedLocationAvailable, requestLocationPermissions } from '../../Pasindu/Discovery/location-service';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
-import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 import { validateOpenJob } from '../JobContracts/validation';
+import { savePersistentJob } from './job-storage';
 
 const CATEGORIES = [
   'Plumbing',
@@ -124,32 +122,9 @@ export default function PostJobScreen() {
       // Unique identifier for the new job
       const dynamicJobId = `job-client-${Date.now()}`;
 
-      // 1. Attempt live Firestore synchronization with guaranteed Firebase App initialization
-      try {
-        const db = getSafeFirestore();
-        await addDoc(collection(db, 'jobs'), {
-          clientId: user.uid,
-          title: title.trim(),
-          description: description.trim(),
-          categoryId: category,
-          photos: [],
-          budgetMinLkr,
-          budgetMaxLkr,
-          geo,
-          city,
-          addressText,
-          preferredDate,
-          status: 'open',
-          applicationCount: 0,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      } catch (firestoreErr) {
-        console.warn('[LinkWorks PostJob] Firestore write skipped/notice:', firestoreErr);
-      }
-
-      // 2. Always register the job into the active session store so the client immediately sees it
-      addLocalDynamicJob({
+      // Persist the job permanently to Cloud Firestore AND physical device flash storage.
+      // This ensures the job remains saved across app restarts until explicitly removed by the owner.
+      await savePersistentJob({
         id: dynamicJobId,
         clientId: user.uid,
         title: title.trim(),
