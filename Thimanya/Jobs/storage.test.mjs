@@ -45,20 +45,19 @@ removeJob('job-test-1');
 assert.strictEqual(getJobs().length, 0);
 console.log('✓ Test 3: Owner deletion successfully removes job from persistent storage');
 
-// 5. Test photo attachment persistence
-const jobWithPhotos = {
-  id: 'job-test-photos',
+// 5. Test job persistence with standard clean schema
+const standardJob = {
+  id: 'job-test-standard',
   clientId: 'client-demo-1',
-  title: 'Fix Pipe Leak With Photos',
-  description: 'Leak in pipe with worksite photos attached',
+  title: 'Fix Pipe Leak Standard',
+  description: 'Standard repair job without worksite photos',
   categoryId: 'Plumbing',
-  photos: ['https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400'],
+  photos: [],
   status: 'open',
 };
-saveJob(jobWithPhotos);
-assert.strictEqual(getJobs()[0].photos.length, 1);
-assert.strictEqual(getJobs()[0].photos[0], 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400');
-console.log('✓ Test 4: Worksite photos correctly persisted with job post');
+saveJob(standardJob);
+assert.strictEqual(getJobs()[0].photos.length, 0);
+console.log('✓ Test 4: Jobs correctly persist with standard clean schema');
 
 // 6. Test application persistence
 let applicationsStorage = {};
@@ -71,19 +70,19 @@ function getApps(jobId) {
 }
 
 // New job starts with 0 applications
-assert.strictEqual(getApps('job-test-photos').length, 0);
+assert.strictEqual(getApps('job-test-standard').length, 0);
 console.log('✓ Test 5: Newly created job starts with 0 quotes');
 
 // Worker applies to job
-saveApp('job-test-photos', {
+saveApp('job-test-standard', {
   workerId: 'worker-plumber-1',
   workerName: 'Sunil Perera',
   quotedPriceLkr: 4500,
   message: 'Can come inspect immediately',
   status: 'submitted',
 });
-assert.strictEqual(getApps('job-test-photos').length, 1);
-assert.strictEqual(getApps('job-test-photos')[0].quotedPriceLkr, 4500);
+assert.strictEqual(getApps('job-test-standard').length, 1);
+assert.strictEqual(getApps('job-test-standard')[0].quotedPriceLkr, 4500);
 console.log('✓ Test 6: Worker quote persists correctly for target job');
 
 console.log('All job storage tests passed successfully! 🎉');

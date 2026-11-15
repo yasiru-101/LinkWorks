@@ -429,30 +429,6 @@ export default function ClientJobDetailScreen() {
             <Text style={styles.descriptionLabel}>Description:</Text>
             <Text style={styles.descriptionText}>{job.description}</Text>
           </View>
-
-          {/* Worksite Photos: Displayed only if photos were actually attached by the client */}
-          {job.photos && job.photos.length > 0 && (
-            <View style={styles.photosSection}>
-              <Text style={styles.photosLabel}>
-                Attached Worksite Photos ({job.photos.length}):
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.photoThumbnailsRow}
-              >
-                {job.photos.map((photoUrl, idx) => (
-                  <View key={idx} style={styles.photoThumbnailCard}>
-                    <Image
-                      source={{ uri: photoUrl }}
-                      style={styles.photoThumbnailImage}
-                      resizeMode="cover"
-                    />
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-          )}
         </View>
 
         {/* Owner Job Management Actions: Allows owner to permanently remove their job post */}
@@ -836,53 +812,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#344454',
     lineHeight: 20,
-  },
-  photosSection: {
-    marginTop: 14,
-    gap: 8,
-  },
-  photosLabel: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 12,
-    fontWeight: '700',
-    color: palette.heading,
-  },
-  photoThumbnailsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  photoThumbnailCard: {
-    width: 140,
-    height: 100,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: '#f4f4f5',
-    borderWidth: 1,
-    borderColor: '#dcece4',
-  },
-  photoThumbnailImage: {
-    width: '100%',
-    height: '100%',
-  },
-  photoBox: {
-    flex: 1,
-    backgroundColor: '#f8faf9',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e2ece7',
-    borderStyle: 'dashed',
-  },
-  photoIcon: {
-    fontSize: 20,
-    marginBottom: 4,
-  },
-  photoCaption: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 11,
-    color: palette.muted,
-    textAlign: 'center',
   },
   assignedSectionCard: {
     backgroundColor: '#ffffff',
