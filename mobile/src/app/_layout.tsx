@@ -24,16 +24,15 @@ function ProtectedStack() {
     <Stack.Protected guard={!!user && !profile}>
       <Stack.Screen name="setup-profile" />
     </Stack.Protected>
-    <Stack.Protected guard={!!user && !!profile && profile.isWorker && !workerReady}>
-      <Stack.Screen name="worker-setup" />
-    </Stack.Protected>
     <Stack.Protected guard={!!user && !!profile && (!profile.isWorker || workerReady)}>
       <Stack.Screen name="(main)" />
-      <Stack.Screen name="worker-setup" />
       <Stack.Screen name="post-job" options={{ presentation: 'modal' }} />
       <Stack.Screen name="job/[id]" />
       <Stack.Screen name="worker/[id]" />
       <Stack.Screen name="chat/[id]" />
+    </Stack.Protected>
+    <Stack.Protected guard={!!user && !!profile && profile.isWorker}>
+      <Stack.Screen name="worker-setup" />
     </Stack.Protected>
     <Stack.Screen name="terms" />
   </Stack>;
