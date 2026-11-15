@@ -1,4 +1,4 @@
-import { collection, doc, getDocFromServer, getDocs, getFirestore, query, where } from '@react-native-firebase/firestore';
+import { collection, doc, getDocFromServer, getDocs, query, where } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -6,11 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CitySelectorModal } from '../../Bhashitha/Design/CitySelectorModal';
 import { JobCard } from '../../Bhashitha/Design/JobCard';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
-import { SEED_JOBS, SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
+import { getLocalDynamicJobs, SEED_JOBS, SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
 import type { Job, WorkerProfile } from '../../mobile/src/types/domain';
 import { distanceKm, type SupportedCity } from '../../Pasindu/Discovery/geo';
 import { useSearchCenter } from '../../Pasindu/Discovery/search-center';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
+import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 
 const RADIUS_OPTIONS = [5, 10, 15, 25, 50];
 
@@ -41,7 +42,7 @@ export default function WorkerFeedScreen() {
   const loadWorkerProfile = useCallback(async () => {
     if (!user) return;
     try {
-      const snap = await getDocFromServer(doc(getFirestore(), 'workerProfiles', user.uid));
+      const snap = await getDocFromServer(doc(getSafeFirestore(), 'workerProfiles', user.uid));
       if (snap.exists()) {
         setWorkerProfile(snap.data() as WorkerProfile);
         return;
@@ -60,8 +61,9 @@ export default function WorkerFeedScreen() {
       let list: Array<Job & { id: string }> = [];
 
       try {
+        const db = getSafeFirestore();
         const snapshot = await getDocs(
-          query(collection(getFirestore(), 'jobs'), where('status', '==', 'open'))
+          query(collection(db, 'jobs'), where('status', '==', 'open'))
         );
         if (!snapshot.empty) {
           list = snapshot.docs.map((docSnap) => ({
@@ -73,6 +75,10 @@ export default function WorkerFeedScreen() {
         // Fall back to seed open jobs in demo/preview.
         list = SEED_JOBS.filter((j) => j.status === 'open');
       }
+
+      // Merge open dynamic jobs created during this app session
+      const dynamicJobs = getLocalDynamicJobs().filter((j) => j.status === 'open');
+      list = [...dynamicJobs, ...list.filter((j) => !dynamicJobs.some((d) => d.id === j.id))];
 
       if (list.length === 0) {
         list = SEED_JOBS.filter((j) => j.status === 'open');

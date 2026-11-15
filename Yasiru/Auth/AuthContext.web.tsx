@@ -10,11 +10,18 @@ type WebAuthState = {
   loading: boolean;
   error: string | null;
   refreshProfile: () => Promise<void>;
-  saveProfile: (input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'>) => Promise<void>;
+  saveProfile: (input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'> & {
+    skills?: string[];
+    dayRateLkr?: number;
+    experienceYears?: number;
+    serviceRadiusKm?: number;
+    bio?: string;
+  }) => Promise<void>;
   selectRole: (role: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
   signInDemoClient: () => void;
   signInDemoWorker: () => void;
+  signInWithPhoneMock?: (phoneNumber: string, isRegister?: boolean) => Promise<void>;
 };
 
 const AuthContext = createContext<WebAuthState | null>(null);
@@ -55,18 +62,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setWorkerReady(true);
   }
 
-  // Save profile and hydrate state for web preview.
-  async function saveProfile(input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'>) {
-    setUser({ uid: 'demo-user-1', phoneNumber: '+94771234567' });
-    setProfile({
-      name: input.name || 'Demo User',
-      phone: '+94771234567',
+  // Save the user profile and worker profile in memory for web preview and testing.
+  async function saveProfile(input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'> & {
+    skills?: string[];
+    dayRateLkr?: number;
+    experienceYears?: number;
+    serviceRadiusKm?: number;
+    bio?: string;
+  }) {
+    const currentUid = user?.uid || 'user_' + Date.now();
+    const currentPhone = user?.phoneNumber || '+94771234567';
+    setUser({ uid: currentUid, phoneNumber: currentPhone });
+
+    // Build the user profile object with chosen roles
+    const newProfile: UserProfile = {
+      name: input.name || 'LinkWorks Member',
+      phone: currentPhone,
       city: input.city || 'Colombo',
       isClient: input.isClient,
       isWorker: input.isWorker,
-      activeRole: input.isClient ? 'client' : 'worker',
-    });
-    setWorkerReady(true);
+      activeRole: input.isWorker && !input.isClient ? 'worker' : 'client',
+    };
+    setProfile(newProfile);
+
+    // If worker role is selected, mark worker profile as ready
+    if (input.isWorker) {
+      setWorkerReady(true);
+    }
   }
 
   // Toggle active role between Client and Worker tabs.
@@ -81,6 +103,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setWorkerReady(false);
   }
 
+  // Sign in with phone number for mock/presentation in web preview.
+  // For new registrations or unrecognized numbers, profile starts as null to open the profile setup screen.
+  async function signInWithPhoneMock(phoneNumber: string, isRegister = false) {
+    const phoneClean = phoneNumber.replace(/[\s()-]/g, '');
+    const uid = 'user_' + phoneClean.replace('+', '');
+    setUser({ uid, phoneNumber: phoneClean });
+
+    // Explicit registration always requires profile creation
+    if (isRegister) {
+      setProfile(null);
+      setWorkerReady(false);
+      return;
+    }
+
+    // Pre-seeded demo numbers bypass onboarding for quick grading
+    if (phoneClean === '+94779876543') {
+      setProfile({
+        name: 'Sunil Shantha',
+        phone: phoneClean,
+        city: 'Colombo',
+        isClient: true,
+        isWorker: true,
+        activeRole: 'worker',
+      });
+      setWorkerReady(true);
+    } else if (phoneClean === '+94771234567') {
+      setProfile({
+        name: 'Kamal Perera',
+        phone: phoneClean,
+        city: 'Colombo',
+        isClient: true,
+        isWorker: true,
+        activeRole: 'client',
+      });
+      setWorkerReady(true);
+    } else {
+      // Any new phone number starts with profile: null, triggering setup-profile
+      setProfile(null);
+      setWorkerReady(false);
+    }
+  }
+
   const value: WebAuthState = {
     user,
     profile,
@@ -93,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut,
     signInDemoClient,
     signInDemoWorker,
+    signInWithPhoneMock,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

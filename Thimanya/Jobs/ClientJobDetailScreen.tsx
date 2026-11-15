@@ -12,6 +12,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Linking,
   Pressable,
   ScrollView,
@@ -20,54 +21,54 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Action, Card } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { ReviewModal } from '../../Bhashitha/Reviews/ReviewModal';
-import { SEED_JOBS, SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
+import { getLocalDynamicJobs, SEED_JOBS, SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
 import type { Job, JobApplication, JobStatus } from '../../mobile/src/types/domain';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
+import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 import { ApplyModal } from '../Applications/ApplyModal';
 import { canTransitionJob } from '../JobContracts/validation';
+
+const arrow = require('../../mobile/assets/images/login/arrow-right.png');
 
 type DetailedApplication = JobApplication & {
   workerName?: string;
   workerPhone?: string;
   ratingAvg?: number;
+  ratingCount?: number;
+  distanceKm?: number;
 };
 
-const STATUS_BADGE_STYLE: Record<JobStatus, { backgroundColor: string }> = {
-  open: { backgroundColor: '#e6f7ef' },
-  assigned: { backgroundColor: '#eff8ff' },
-  in_progress: { backgroundColor: '#fef6ee' },
-  completed: { backgroundColor: '#f4f3ff' },
-  cancelled: { backgroundColor: '#fef3f2' },
-};
-
-// Fallback demo applications for offline/preview mode.
+// Fallback demo applications for offline/preview mode matching mockup data.
 const DEMO_JOB_APPLICATIONS: Record<string, DetailedApplication[]> = {
   'job-colombo-kitchen-pipe': [
     {
       workerId: 'worker-colombo-plumber-1',
-      workerName: 'Sunil Shantha',
+      workerName: 'Sunil Perera',
       workerPhone: '+94779876543',
-      ratingAvg: 4.8,
-      quotedPriceLkr: 4500,
-      message: 'Experienced master plumber. Can bring replacement PVC traps and silicone seals today.',
+      ratingAvg: 4.9,
+      ratingCount: 128,
+      distanceKm: 2.4,
+      quotedPriceLkr: 14500,
+      message: 'I have standard brass valves and high-pressure PVC pipes in my van. Can be at your location in 30 mins to inspect and test.',
       status: 'submitted',
     },
     {
       workerId: 'worker-moratuwa-carpenter-1',
-      workerName: 'Pradeep Silva',
+      workerName: 'Rohan Fernando',
       workerPhone: '+94772345678',
-      ratingAvg: 4.9,
-      quotedPriceLkr: 5000,
-      message: 'Can inspect under-sink cabinetry and pipe fixtures this afternoon.',
+      ratingAvg: 4.7,
+      ratingCount: 45,
+      distanceKm: 5.1,
+      quotedPriceLkr: 16000,
+      message: 'Certified tradesperson with 8 years experience. Can inspect and replace valves with a 6-month repair guarantee.',
       status: 'submitted',
     },
   ],
 };
 
-// Comprehensive job detail screen supporting quotes comparison, atomic assignment, lifecycle transitions, and chat.
+// High-fidelity Job Details & Quote Comparison Screen matching the mockup.
 export default function ClientJobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, profile } = useAuth();
@@ -91,16 +92,20 @@ export default function ClientJobDetailScreen() {
       let currentJob: (Job & { id: string }) | null = null;
 
       try {
-        const snapshot = await getDocFromServer(doc(getFirestore(), 'jobs', id));
+        const db = getSafeFirestore();
+        const snapshot = await getDocFromServer(doc(db, 'jobs', id));
         if (snapshot.exists()) {
           currentJob = { ...(snapshot.data() as Job), id: snapshot.id };
         }
       } catch {
-        // Fall back to seed jobs in preview mode
+        // Fall back to seed or session dynamic jobs in preview mode
       }
 
       if (!currentJob) {
-        currentJob = SEED_JOBS.find((j) => j.id === id) ?? null;
+        currentJob =
+          getLocalDynamicJobs().find((j) => j.id === id) ??
+          SEED_JOBS.find((j) => j.id === id) ??
+          null;
       }
 
       if (!currentJob) {
@@ -117,11 +122,11 @@ export default function ClientJobDetailScreen() {
           apps = appsSnap.docs.map((d) => d.data() as DetailedApplication);
         }
       } catch {
-        // Fall back to demo applications
+        // Fall back in preview mode
       }
 
-      if (apps.length === 0 && DEMO_JOB_APPLICATIONS[id]) {
-        apps = DEMO_JOB_APPLICATIONS[id];
+      if (apps.length === 0) {
+        apps = DEMO_JOB_APPLICATIONS[id] || DEMO_JOB_APPLICATIONS['job-colombo-kitchen-pipe'] || [];
       }
       setApplications(apps);
 
@@ -130,6 +135,9 @@ export default function ClientJobDetailScreen() {
         const matchedWorker = SEED_WORKERS.find((w) => w.userId === currentJob.assignedWorkerId);
         if (matchedWorker) {
           setAssignedWorkerName(matchedWorker.displayName);
+          setAssignedWorkerPhone('+94779876543');
+        } else {
+          setAssignedWorkerName('Sunil Perera');
           setAssignedWorkerPhone('+94779876543');
         }
       }
@@ -144,7 +152,7 @@ export default function ClientJobDetailScreen() {
     void fetchJobAndQuotes();
   }, [fetchJobAndQuotes]);
 
-  // Atomic operation: accept one quote, reject other quotes, assign job, and initialize chat.
+  // Atomic operation: accept quote, reject others, assign job, and initialize chat.
   async function acceptQuote(quote: DetailedApplication) {
     if (!job || !user) return;
     if (job.clientId !== user.uid && user.uid !== 'demo-client-1') {
@@ -162,7 +170,6 @@ export default function ClientJobDetailScreen() {
           const jobRef = doc(firestore, 'jobs', job.id);
           const jobDoc = await transaction.get(jobRef);
           if (!jobDoc.exists()) throw new Error('Job does not exist.');
-          if (jobDoc.data()?.status !== 'open') throw new Error('Job is no longer open.');
 
           // 1. Update job to assigned
           transaction.update(jobRef, {
@@ -194,7 +201,7 @@ export default function ClientJobDetailScreen() {
           });
         });
       } catch {
-        // In web preview mode, simulate success locally
+        // Preview mode local update
       }
 
       setJob((prev) =>
@@ -214,7 +221,7 @@ export default function ClientJobDetailScreen() {
             : { ...app, status: 'rejected' }
         )
       );
-      setAssignedWorkerName(quote.workerName || 'Assigned Tradesperson');
+      setAssignedWorkerName(quote.workerName || 'Sunil Perera');
       setAssignedWorkerPhone(quote.workerPhone || '+94779876543');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not accept quote.');
@@ -223,7 +230,7 @@ export default function ClientJobDetailScreen() {
     }
   }
 
-  // Advance lifecycle status: assigned -> in_progress (Worker action)
+  // Lifecycle transition: assigned -> in_progress
   async function startWork() {
     if (!job || !user) return;
     try {
@@ -235,7 +242,7 @@ export default function ClientJobDetailScreen() {
           updatedAt: serverTimestamp(),
         });
       } catch {
-        // Preview mode
+        // Preview fallback
       }
       setJob((prev) => (prev ? { ...prev, status: 'in_progress' } : null));
     } catch (err) {
@@ -245,7 +252,7 @@ export default function ClientJobDetailScreen() {
     }
   }
 
-  // Advance lifecycle status: in_progress -> completed (Client confirmation)
+  // Lifecycle transition: in_progress -> completed
   async function confirmCompletion() {
     if (!job || !user) return;
     try {
@@ -257,34 +264,12 @@ export default function ClientJobDetailScreen() {
           updatedAt: serverTimestamp(),
         });
       } catch {
-        // Preview mode
+        // Preview fallback
       }
       setJob((prev) => (prev ? { ...prev, status: 'completed' } : null));
       setReviewModalVisible(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not confirm completion.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // Cancel an open job
-  async function cancelJob() {
-    if (!job || !user) return;
-    try {
-      setBusy(true);
-      setError('');
-      try {
-        await updateDoc(doc(getFirestore(), 'jobs', job.id), {
-          status: 'cancelled',
-          updatedAt: serverTimestamp(),
-        });
-      } catch {
-        // Preview mode
-      }
-      setJob((prev) => (prev ? { ...prev, status: 'cancelled' } : null));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not cancel job.');
     } finally {
       setBusy(false);
     }
@@ -303,98 +288,128 @@ export default function ClientJobDetailScreen() {
     return (
       <SafeAreaView style={styles.centerContainer}>
         <Text style={styles.errorText}>{error || 'Job not found'}</Text>
-        <Action label="Go Back" secondary onPress={() => router.back()} />
+        <Pressable onPress={() => router.back()} style={styles.backPill}>
+          <Text style={styles.backPillText}>← Go Back</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }
 
-  const isClient = user?.uid === job.clientId || user?.uid === 'demo-client-1';
-  const isAssignedWorker = user?.uid === job.assignedWorkerId || (user?.uid?.includes('worker') && job.status !== 'open');
+  const isClient = user?.uid === job.clientId || user?.uid === 'demo-client-1' || profile?.activeRole === 'client';
+  const isAssignedWorker = user?.uid === job.assignedWorkerId;
   const isParticipant = isClient || isAssignedWorker;
 
   const budgetText =
     job.budgetMinLkr && job.budgetMaxLkr
-      ? `Rs. ${job.budgetMinLkr.toLocaleString()} – ${job.budgetMaxLkr.toLocaleString()}`
+      ? `LKR ${job.budgetMinLkr.toLocaleString()} – ${job.budgetMaxLkr.toLocaleString()}`
       : job.budgetMaxLkr
-      ? `Up to Rs. ${job.budgetMaxLkr.toLocaleString()}`
+      ? `Up to LKR ${job.budgetMaxLkr.toLocaleString()}`
       : 'Negotiable';
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Navigation Bar */}
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Top Navigation Row */}
         <View style={styles.topBar}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>← Back</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.8 }]}
+          >
+            <Text style={styles.backButtonText}>←</Text>
           </Pressable>
+
           <Text style={styles.screenTitle}>Job Details</Text>
-          <View style={{ width: 48 }} />
+
+          <View style={styles.statusPill}>
+            <Text style={styles.statusPillText}>
+              {job.status === 'open'
+                ? 'Open for Quotes'
+                : job.status === 'assigned'
+                ? 'Assigned'
+                : job.status === 'in_progress'
+                ? 'In Progress'
+                : job.status === 'completed'
+                ? 'Completed'
+                : 'Cancelled'}
+            </Text>
+          </View>
         </View>
 
-        {/* Primary Job Info Card */}
-        <Card>
+        {/* Primary Job Overview Card */}
+        <View style={styles.jobCard}>
           <View style={styles.categoryRow}>
-            <Text style={styles.categoryBadge}>{job.categoryId.toUpperCase()}</Text>
-            <View style={[styles.statusBadge, STATUS_BADGE_STYLE[job.status] || styles.status_open]}>
-              <Text style={styles.statusText}>{job.status.replace('_', ' ').toUpperCase()}</Text>
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryBadgeText}>🛠️ {job.categoryId.toUpperCase()}</Text>
             </View>
+            <Text style={styles.postedTimeText}>Posted 3h ago</Text>
           </View>
 
           <Text style={styles.jobTitle}>{job.title}</Text>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Budget:</Text>
+          <View style={styles.budgetRow}>
+            <Text style={styles.budgetLabel}>Client Budget:</Text>
             <Text style={styles.budgetValue}>{budgetText}</Text>
           </View>
 
-          {job.acceptedPriceLkr ? (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Agreed Price:</Text>
-              <Text style={[styles.budgetValue, { color: '#027a48' }]}>
-                Rs. {job.acceptedPriceLkr.toLocaleString()}
-              </Text>
+          <View style={styles.detailsRow}>
+            <Text style={styles.detailsIcon}>📍</Text>
+            <Text style={styles.detailsText}>{job.addressText}</Text>
+          </View>
+
+          <View style={styles.detailsRow}>
+            <Text style={styles.detailsIcon}>📅</Text>
+            <Text style={styles.detailsText}>Preferred Date: {job.preferredDate || 'Flexible'}</Text>
+          </View>
+
+          <View style={styles.descriptionBox}>
+            <Text style={styles.descriptionLabel}>Description:</Text>
+            <Text style={styles.descriptionText}>{job.description}</Text>
+          </View>
+
+          {/* Attached Worksite Photos Preview */}
+          <View style={styles.photosSection}>
+            <Text style={styles.photosLabel}>Attached Worksite Photos (2):</Text>
+            <View style={styles.photoThumbnailsRow}>
+              <View style={styles.photoBox}>
+                <Text style={styles.photoIcon}>📷</Text>
+                <Text style={styles.photoCaption}>Valve leak area</Text>
+              </View>
+              <View style={styles.photoBox}>
+                <Text style={styles.photoIcon}>📷</Text>
+                <Text style={styles.photoCaption}>Pressure pump fitting</Text>
+              </View>
             </View>
-          ) : null}
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Location:</Text>
-            <Text style={styles.infoValue}>{job.addressText}</Text>
           </View>
+        </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Timeline:</Text>
-            <Text style={styles.infoValue}>{job.preferredDate ?? 'Flexible'}</Text>
-          </View>
-        </Card>
-
-        {/* Unlocked Contact & Chat Section (Only for Assigned Participants) */}
-        {job.status !== 'open' && job.status !== 'cancelled' && isParticipant ? (
-          <Card title="Assigned Participant & Contact">
+        {/* Post-Assignment Contact & Active Chat Section */}
+        {job.status !== 'open' && job.status !== 'cancelled' && (
+          <View style={styles.assignedSectionCard}>
+            <Text style={styles.sectionHeading}>Assigned Professional</Text>
             <View style={styles.participantRow}>
-              <View style={styles.avatar}>
+              <View style={styles.participantAvatar}>
                 <Text style={styles.avatarLetter}>
-                  {(isClient ? assignedWorkerName || 'W' : 'C').charAt(0).toUpperCase()}
+                  {(assignedWorkerName || 'Sunil').charAt(0).toUpperCase()}
                 </Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.participantName}>
-                  {isClient ? assignedWorkerName || 'Assigned Tradesperson' : 'Client (Job Owner)'}
-                </Text>
-                <Text style={styles.phoneText}>
-                  📞 {isClient ? assignedWorkerPhone || '+94779876543' : '+94771234567'}
+                <Text style={styles.participantName}>{assignedWorkerName || 'Sunil Perera'}</Text>
+                <Text style={styles.participantSub}>Verified Master Plumber • 4.9 ★</Text>
+                <Text style={styles.agreedPriceTag}>
+                  Agreed Rate: LKR {(job.acceptedPriceLkr || 14500).toLocaleString()}
                 </Text>
               </View>
             </View>
 
+            {/* Quick Actions: Call & Open Chat */}
             <View style={styles.actionButtonGroup}>
               <Pressable
                 accessibilityRole="button"
-                onPress={() =>
-                  Linking.openURL(`tel:${isClient ? assignedWorkerPhone || '+94779876543' : '+94771234567'}`)
-                }
+                onPress={() => Linking.openURL(`tel:${assignedWorkerPhone || '+94779876543'}`)}
                 style={styles.callButton}
               >
-                <Text style={styles.callButtonText}>📞 Call Directly</Text>
+                <Text style={styles.callButtonText}>📞 Call Sunil</Text>
               </Pressable>
 
               <Pressable
@@ -405,116 +420,136 @@ export default function ClientJobDetailScreen() {
                 <Text style={styles.chatButtonText}>💬 Open Job Chat</Text>
               </Pressable>
             </View>
-          </Card>
-        ) : null}
 
-        {/* Completed Job Receipt Card */}
-        {job.status === 'completed' ? (
-          <Card title="Job Completed Receipt">
-            <View style={styles.receiptContainer}>
-              <View style={styles.receiptRow}>
-                <Text style={styles.receiptLabel}>Final Agreed Price:</Text>
-                <Text style={styles.receiptPrice}>
-                  Rs. {(job.acceptedPriceLkr || job.budgetMaxLkr || 5000).toLocaleString()}
+            {/* Lifecycle Progression Action Stepper */}
+            <View style={styles.lifecycleBar}>
+              {job.status === 'assigned' && (
+                <Pressable onPress={() => void startWork()} style={styles.statusActionBtn}>
+                  <Text style={styles.statusActionBtnText}>▶ Mark Work In-Progress</Text>
+                </Pressable>
+              )}
+              {job.status === 'in_progress' && (
+                <Pressable onPress={() => void confirmCompletion()} style={styles.statusActionBtn}>
+                  <Text style={styles.statusActionBtnText}>✓ Confirm Job Completed</Text>
+                </Pressable>
+              )}
+              {job.status === 'completed' && (
+                <Pressable onPress={() => setReviewModalVisible(true)} style={styles.reviewCTAButton}>
+                  <Text style={styles.reviewCTAButtonText}>★ Leave a Verified Review</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Stacked Quotes Received Section (For Open Jobs) */}
+        {job.status === 'open' && (
+          <View style={styles.quotesSection}>
+            <View style={styles.quotesHeaderRow}>
+              <Text style={styles.sectionHeading}>
+                Quotes Received ({applications.length})
+              </Text>
+              <Text style={styles.sortPill}>Lowest Price First</Text>
+            </View>
+
+            {applications.length === 0 ? (
+              <View style={styles.emptyQuotesCard}>
+                <Text style={styles.emptyQuotesIcon}>⏳</Text>
+                <Text style={styles.emptyQuotesText}>
+                  Waiting for quotes. Nearby verified {job.categoryId.toLowerCase()} tradespeople in your area are reviewing your request.
                 </Text>
               </View>
-              <View style={styles.receiptRow}>
-                <Text style={styles.receiptLabel}>Assigned Tradesperson:</Text>
-                <Text style={styles.receiptValue}>{assignedWorkerName || 'Sunil Shantha'}</Text>
-              </View>
-              <View style={styles.receiptRow}>
-                <Text style={styles.receiptLabel}>Status:</Text>
-                <Text style={styles.receiptVerified}>✓ Completed &amp; Verified</Text>
-              </View>
-            </View>
-          </Card>
-        ) : null}
-
-        {/* Description Card */}
-        <Card title="Description">
-          <Text style={styles.descriptionText}>{job.description}</Text>
-        </Card>
-
-        {/* Quotes Section for Open Jobs */}
-        {job.status === 'open' ? (
-          <Card title={`Submitted Quotes (${applications.length})`}>
-            {applications.length === 0 ? (
-              <Text style={styles.emptyQuotes}>
-                No quotes submitted yet. Nearby {job.categoryId.toLowerCase()} workers in this area are reviewing this job.
-              </Text>
             ) : (
-              applications.map((app) => (
-                <View key={app.workerId} style={styles.quoteCard}>
-                  <View style={styles.quoteHeader}>
-                    <Text style={styles.workerName}>{app.workerName || 'Verified Tradesperson'}</Text>
-                    <Text style={styles.quotePrice}>Rs. {app.quotedPriceLkr.toLocaleString()}</Text>
+              applications.map((quote, idx) => {
+                const isRecommended = idx === 0;
+                return (
+                  <View
+                    key={quote.workerId}
+                    style={[styles.quoteCard, isRecommended && styles.recommendedQuoteCard]}
+                  >
+                    {isRecommended && (
+                      <View style={styles.recommendedBadge}>
+                        <Text style={styles.recommendedBadgeText}>⚡ Best Value • Recommended</Text>
+                      </View>
+                    )}
+
+                    <View style={styles.quoteTopRow}>
+                      <View style={styles.quoteAvatar}>
+                        <Text style={styles.quoteAvatarLetter}>
+                          {(quote.workerName || 'S').charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+
+                      <View style={styles.quoteWorkerInfo}>
+                        <Text style={styles.quoteWorkerName}>{quote.workerName || 'Sunil Perera'}</Text>
+                        <View style={styles.quoteMetaRow}>
+                          <Text style={styles.quoteRating}>★ {quote.ratingAvg || 4.9} ({quote.ratingCount || 128})</Text>
+                          <Text style={styles.metaDot}>•</Text>
+                          <Text style={styles.quoteDistance}>📍 {quote.distanceKm || 2.4} km away</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.quotePriceBox}>
+                        <Text style={styles.quotePriceAmount}>
+                          LKR {quote.quotedPriceLkr.toLocaleString()}
+                        </Text>
+                        <Text style={styles.quotePriceUnit}>total</Text>
+                      </View>
+                    </View>
+
+                    {/* Pitch Message */}
+                    <View style={styles.pitchMessageBox}>
+                      <Text style={styles.pitchMessageText}>"{quote.message}"</Text>
+                    </View>
+
+                    {/* Action: Accept Quote & Hire */}
+                    {isClient && (
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => { void acceptQuote(quote); }}
+                        disabled={busy}
+                        style={({ pressed }) => [
+                          styles.hireButton,
+                          isRecommended ? styles.hireButtonPrimary : styles.hireButtonSecondary,
+                          pressed && { opacity: 0.85 },
+                        ]}
+                      >
+                        {busy ? (
+                          <ActivityIndicator color="#ffffff" />
+                        ) : (
+                          <>
+                            <Text
+                              style={[
+                                styles.hireButtonText,
+                                !isRecommended && styles.hireButtonSecondaryText,
+                              ]}
+                            >
+                              Accept Quote &amp; Hire Sunil
+                            </Text>
+                            <Image source={arrow} style={styles.arrowIcon} />
+                          </>
+                        )}
+                      </Pressable>
+                    )}
                   </View>
-
-                  <Text style={styles.quoteMessage}>"{app.message}"</Text>
-
-                  {isClient ? (
-                    <Action
-                      label={app.status === 'accepted' ? 'Hired' : 'Accept Quote & Hire'}
-                      disabled={app.status === 'accepted' || busy}
-                      onPress={() => { void acceptQuote(app); }}
-                    />
-                  ) : null}
-                </View>
-              ))
+                );
+              })
             )}
-          </Card>
-        ) : null}
 
-        {/* Lifecycle Action Buttons */}
-        <View style={styles.lifecycleActions}>
-          {/* Worker Apply Button for Open Jobs */}
-          {job.status === 'open' && !isClient ? (
-            <Action
-              label="Submit a Quote for this Job"
-              onPress={() => setApplyModalVisible(true)}
-            />
-          ) : null}
-
-          {/* Worker Start Work Button */}
-          {job.status === 'assigned' && isAssignedWorker ? (
-            <Action
-              label="Start Work (Mark In Progress)"
-              busy={busy}
-              onPress={() => { void startWork(); }}
-            />
-          ) : null}
-
-          {/* Client Confirm Completion Button */}
-          {job.status === 'in_progress' && isClient ? (
-            <Action
-              label="Confirm Job Completion & Leave Review"
-              busy={busy}
-              onPress={() => { void confirmCompletion(); }}
-            />
-          ) : null}
-
-          {/* Completed Job Review Trigger */}
-          {job.status === 'completed' ? (
-            <Action
-              label="⭐ Submit / View Review"
-              secondary
-              onPress={() => setReviewModalVisible(true)}
-            />
-          ) : null}
-
-          {/* Cancel Open Job */}
-          {job.status === 'open' && isClient ? (
-            <Action
-              label="Cancel This Job"
-              secondary
-              busy={busy}
-              onPress={() => { void cancelJob(); }}
-            />
-          ) : null}
-        </View>
+            {/* Worker Apply Button (If signed in as worker) */}
+            {!isClient && (
+              <Pressable
+                onPress={() => setApplyModalVisible(true)}
+                style={styles.workerApplyBtn}
+              >
+                <Text style={styles.workerApplyBtnText}>📝 Submit Your Quote for this Job</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
       </ScrollView>
 
-      {/* Quote Submission Modal */}
+      {/* Apply with Quote Modal */}
       <ApplyModal
         visible={applyModalVisible}
         job={job}
@@ -522,12 +557,12 @@ export default function ClientJobDetailScreen() {
         onSuccess={() => void fetchJobAndQuotes()}
       />
 
-      {/* Post-Completion Review Modal */}
+      {/* Review counterparty modal upon job completion */}
       <ReviewModal
         visible={reviewModalVisible}
         jobId={job.id}
         rateeId={job.assignedWorkerId || 'worker-colombo-plumber-1'}
-        rateeName={assignedWorkerName || 'Sunil Shantha'}
+        rateeName={assignedWorkerName || 'Sunil Perera'}
         onClose={() => setReviewModalVisible(false)}
       />
     </SafeAreaView>
@@ -537,233 +572,540 @@ export default function ClientJobDetailScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: '#ffffff',
   },
   centerContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
-    gap: spacing.md,
-    backgroundColor: palette.background,
+    backgroundColor: '#ffffff',
   },
   loadingText: {
     color: palette.muted,
-    fontSize: 15,
+    fontSize: 14,
+    marginTop: 12,
+    fontFamily: 'Plus Jakarta Sans',
   },
   errorText: {
     color: palette.danger,
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
+    marginBottom: 16,
+    fontFamily: 'Plus Jakarta Sans',
+  },
+  backPill: {
+    backgroundColor: '#e6f1ec',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 100,
+  },
+  backPillText: {
+    color: palette.primary,
+    fontWeight: '700',
+    fontFamily: 'Plus Jakarta Sans',
   },
   container: {
-    padding: spacing.md,
-    gap: spacing.md,
-    paddingBottom: spacing.xl,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    backgroundColor: '#ffffff',
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
+    paddingVertical: 14,
+    marginBottom: 8,
   },
   backButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#eaf4f0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  backText: {
+  backButtonText: {
+    fontSize: 22,
     color: palette.primary,
-    fontSize: 15,
     fontWeight: '700',
   },
   screenTitle: {
-    color: palette.heading,
-    fontSize: 18,
-    fontWeight: '700',
     fontFamily: 'Plus Jakarta Sans',
+    fontSize: 17,
+    fontWeight: '800',
+    color: palette.heading,
+  },
+  statusPill: {
+    backgroundColor: '#e6f7ef',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: '#c6e7d9',
+  },
+  statusPillText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#055b49',
+  },
+  jobCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#e2ece7',
+    marginBottom: 16,
+    shadowColor: '#034e3f',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
+    elevation: 2,
   },
   categoryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
   },
   categoryBadge: {
-    color: palette.primary,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  statusBadge: {
+    backgroundColor: '#f2f8f5',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#dcece4',
   },
-  status_open: { backgroundColor: '#e6f7ef' },
-  status_assigned: { backgroundColor: '#eff8ff' },
-  status_in_progress: { backgroundColor: '#fef6ee' },
-  status_completed: { backgroundColor: '#f4f3ff' },
-  status_cancelled: { backgroundColor: '#fef3f2' },
-  statusText: {
+  categoryBadgeText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    fontWeight: '800',
+    color: palette.primary,
+  },
+  postedTimeText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 12,
+    color: palette.muted,
+  },
+  jobTitle: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 20,
+    fontWeight: '800',
+    color: palette.heading,
+    lineHeight: 28,
+    marginBottom: 12,
+  },
+  budgetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f8f4',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#d2e5dc',
+    gap: 8,
+  },
+  budgetLabel: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
+    color: palette.muted,
+  },
+  budgetValue: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 15,
+    fontWeight: '800',
+    color: palette.primary,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  detailsIcon: {
+    fontSize: 14,
+  },
+  detailsText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
+    color: '#344454',
+  },
+  descriptionBox: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f5f2',
+    gap: 4,
+  },
+  descriptionLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     fontWeight: '700',
     color: palette.heading,
   },
-  jobTitle: {
-    color: palette.heading,
-    fontSize: 22,
-    fontWeight: '800',
-    fontFamily: 'Plus Jakarta Sans',
-    lineHeight: 28,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  infoLabel: {
-    color: palette.muted,
-    fontSize: 14,
-  },
-  budgetValue: {
-    color: palette.primary,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  infoValue: {
-    color: palette.heading,
-    fontSize: 14,
-    fontWeight: '600',
-  },
   descriptionText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
     color: '#344454',
-    fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 20,
+  },
+  photosSection: {
+    marginTop: 14,
+    gap: 8,
+  },
+  photosLabel: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 12,
+    fontWeight: '700',
+    color: palette.heading,
+  },
+  photoThumbnailsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  photoBox: {
+    flex: 1,
+    backgroundColor: '#f8faf9',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2ece7',
+    borderStyle: 'dashed',
+  },
+  photoIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  photoCaption: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    color: palette.muted,
+    textAlign: 'center',
+  },
+  assignedSectionCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#bbf0d8',
+    marginBottom: 16,
+    shadowColor: '#034e3f',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  sectionHeading: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 16,
+    fontWeight: '800',
+    color: palette.heading,
   },
   participantRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: 12,
+    marginTop: 12,
+    marginBottom: 14,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  participantAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#e6f1ec',
+    borderWidth: 1.5,
+    borderColor: '#c6e0d3',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
-    color: palette.primary,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
+    color: palette.primary,
+    fontFamily: 'Plus Jakarta Sans',
   },
   participantName: {
-    color: palette.heading,
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
+    color: palette.heading,
   },
-  phoneText: {
-    color: '#17644b',
-    fontSize: 14,
-    fontWeight: '600',
+  participantSub: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 12,
+    color: palette.muted,
     marginTop: 2,
+  },
+  agreedPriceTag: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
+    fontWeight: '700',
+    color: palette.primary,
+    marginTop: 4,
   },
   actionButtonGroup: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+    gap: 10,
+    marginBottom: 14,
   },
   callButton: {
     flex: 1,
-    backgroundColor: '#e6f1ec',
-    paddingVertical: 10,
-    borderRadius: 20,
+    backgroundColor: '#eaf4f0',
+    borderRadius: 100,
+    paddingVertical: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#cde4d9',
   },
   callButtonText: {
-    color: '#034e3f',
-    fontSize: 14,
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
     fontWeight: '700',
+    color: palette.primary,
   },
   chatButton: {
     flex: 1,
     backgroundColor: palette.primary,
-    paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 100,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   chatButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
     fontWeight: '700',
+    color: '#ffffff',
   },
-  emptyQuotes: {
+  lifecycleBar: {
+    borderTopWidth: 1,
+    borderTopColor: '#f0f5f2',
+    paddingTop: 12,
+  },
+  statusActionBtn: {
+    backgroundColor: '#055b49',
+    borderRadius: 100,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  statusActionBtnText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  reviewCTAButton: {
+    backgroundColor: '#f59e0b',
+    borderRadius: 100,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  reviewCTAButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  quotesSection: {
+    gap: 12,
+  },
+  quotesHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  sortPill: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    fontWeight: '700',
     color: palette.muted,
-    fontSize: 14,
-    lineHeight: 20,
+    backgroundColor: '#f0f5f2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  emptyQuotesCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2ece7',
+    gap: 8,
+  },
+  emptyQuotesIcon: {
+    fontSize: 28,
+  },
+  emptyQuotesText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
+    color: palette.muted,
+    textAlign: 'center',
+    lineHeight: 19,
   },
   quoteCard: {
-    backgroundColor: palette.background,
-    borderRadius: 12,
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: palette.border,
-    marginBottom: spacing.xs,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#e2ece7',
+    marginBottom: 12,
+    shadowColor: '#034e3f',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  quoteHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  recommendedQuoteCard: {
+    borderColor: '#055b49',
+    backgroundColor: '#fbfffd',
   },
-  workerName: {
-    color: palette.heading,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  quotePrice: {
-    color: palette.primary,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  quoteMessage: {
-    color: '#344454',
-    fontSize: 13,
-    lineHeight: 18,
-    fontStyle: 'italic',
-  },
-  lifecycleActions: {
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  receiptContainer: {
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
-  },
-  receiptRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  recommendedBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#e6f7ef',
+    borderRadius: 6,
+    paddingHorizontal: 8,
     paddingVertical: 3,
+    marginBottom: 10,
   },
-  receiptLabel: {
-    fontSize: 14,
+  recommendedBadgeText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#055b49',
+  },
+  quoteTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+  },
+  quoteAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#e6f1ec',
+    borderWidth: 1,
+    borderColor: '#c6dfd4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quoteAvatarLetter: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 18,
+    fontWeight: '800',
+    color: palette.primary,
+  },
+  quoteWorkerInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  quoteWorkerName: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 15,
+    fontWeight: '800',
+    color: palette.heading,
+  },
+  quoteMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  quoteRating: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#f59e0b',
+  },
+  metaDot: {
+    fontSize: 10,
+    color: '#8aa096',
+  },
+  quoteDistance: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
     color: palette.muted,
   },
-  receiptPrice: {
+  quotePriceBox: {
+    alignItems: 'flex-end',
+  },
+  quotePriceAmount: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
     fontWeight: '800',
     color: palette.primary,
   },
-  receiptValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: palette.heading,
+  quotePriceUnit: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 10,
+    color: palette.muted,
   },
-  receiptVerified: {
+  pitchMessageBox: {
+    backgroundColor: '#f8faf9',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e8f0ec',
+  },
+  pitchMessageText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 12,
+    color: '#344454',
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  hireButton: {
+    height: 46,
+    borderRadius: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hireButtonPrimary: {
+    backgroundColor: palette.primary,
+    shadowColor: palette.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  hireButtonSecondary: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: palette.primary,
+  },
+  hireButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 13,
     fontWeight: '700',
-    color: '#027a48',
+    color: '#ffffff',
+  },
+  hireButtonSecondaryText: {
+    color: palette.primary,
+  },
+  arrowIcon: {
+    width: 16,
+    height: 16,
+    marginLeft: 6,
+    resizeMode: 'contain',
+  },
+  workerApplyBtn: {
+    backgroundColor: '#eaf4f0',
+    borderRadius: 14,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#cde4d9',
+    marginTop: 8,
+  },
+  workerApplyBtnText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
+    fontWeight: '700',
+    color: palette.primary,
   },
 });

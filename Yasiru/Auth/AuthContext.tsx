@@ -2,6 +2,8 @@ import { getAuth, onAuthStateChanged, signOut as firebaseSignOut } from '@react-
 import { doc, getDocFromServer, getFirestore, serverTimestamp, setDoc, updateDoc } from '@react-native-firebase/firestore';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { UserProfile, UserRole } from '../../mobile/src/types/domain';
+import { CITY_CENTERS, geohashForPoint, type SupportedCity } from '../../Pasindu/Discovery/geo';
+import { ensureFirebaseApp, getSafeAuth, getSafeFirestore } from './firebase';
 
 type AuthUser = { uid: string; phoneNumber: string | null };
 type AuthState = {
@@ -11,12 +13,18 @@ type AuthState = {
   loading: boolean;
   error: string | null;
   refreshProfile: () => Promise<void>;
-  saveProfile: (input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'>) => Promise<void>;
+  saveProfile: (input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'> & {
+    skills?: string[];
+    dayRateLkr?: number;
+    experienceYears?: number;
+    serviceRadiusKm?: number;
+    bio?: string;
+  }) => Promise<void>;
   selectRole: (role: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
   signInDemoClient?: () => void;
   signInDemoWorker?: () => void;
-  signInWithPhoneMock?: (phoneNumber: string) => Promise<void>;
+  signInWithPhoneMock?: (phoneNumber: string, isRegister?: boolean) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -51,7 +59,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Read both profile documents from the server after sign-in or a successful save.
   const refreshProfile = useCallback(async () => {
-    const currentUser = getAuth().currentUser;
+    let currentUser = null;
+    try {
+      currentUser = getSafeAuth().currentUser;
+    } catch {
+      // Safe fallback when Firebase native auth is unavailable
+    }
     const requestGeneration = generation.current;
     if (!currentUser) {
       setProfile(null);
@@ -62,10 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const account = await getDocFromServer(doc(getFirestore(), 'users', currentUser.uid));
+      const db = getSafeFirestore();
+      const account = await getDocFromServer(doc(db, 'users', currentUser.uid));
       const nextProfile = account.exists() ? readProfile(account.data()) : null;
       const worker = nextProfile?.isWorker
-        ? await getDocFromServer(doc(getFirestore(), 'workerProfiles', currentUser.uid))
+        ? await getDocFromServer(doc(db, 'workerProfiles', currentUser.uid))
         : null;
       if (requestGeneration !== generation.current) return;
       setProfile(nextProfile);
@@ -81,29 +95,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // React to native Firebase sign-in changes and prevent an old read replacing a new session.
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(getAuth(), (nextUser) => {
-      generation.current += 1;
-      setUser(nextUser ? { uid: nextUser.uid, phoneNumber: nextUser.phoneNumber } : null);
-      setProfile(null);
-      setWorkerReady(false);
-      setError(null);
-      void refreshProfile();
-    });
+    let unsubscribe = () => {};
+    try {
+      unsubscribe = onAuthStateChanged(getSafeAuth(), (nextUser) => {
+        generation.current += 1;
+        setUser(nextUser ? { uid: nextUser.uid, phoneNumber: nextUser.phoneNumber } : null);
+        setProfile(null);
+        setWorkerReady(false);
+        setError(null);
+        void refreshProfile();
+      });
+    } catch (authErr) {
+      console.warn('[LinkWorks Auth] Auth state listener notice:', authErr);
+    }
     return () => {
       generation.current += 1;
       unsubscribe();
     };
   }, [refreshProfile]);
 
-  // Save the private account and let the server read-back confirm the result.
-  const saveProfile = useCallback(async (input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'>) => {
-    const currentUser = getAuth().currentUser;
+  // Save the private account to Firestore (and worker profile if worker role is selected), then re-fetch.
+  const saveProfile = useCallback(async (input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'> & {
+    skills?: string[];
+    dayRateLkr?: number;
+    experienceYears?: number;
+    serviceRadiusKm?: number;
+    bio?: string;
+  }) => {
+    let currentUser = null;
+    try {
+      currentUser = getSafeAuth().currentUser;
+    } catch {
+      // Safe fallback
+    }
     const name = input.name.trim();
     const city = input.city.trim();
     if (!name || !city || (!input.isClient && !input.isWorker)) {
       throw new Error('Enter name and city, then choose at least one role.');
     }
-    const activeRole: UserRole = input.isClient ? 'client' : 'worker';
+    const activeRole: UserRole = input.isWorker && !input.isClient ? 'worker' : 'client';
 
     // Support local demo account saving when bypassing native Firebase SMS
     if (!currentUser) {
@@ -115,13 +145,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isWorker: input.isWorker,
         activeRole,
       });
-      setWorkerReady(true);
+      if (input.isWorker) {
+        setWorkerReady(true);
+      }
       return;
     }
 
     if (!currentUser.phoneNumber) throw new Error('Sign in with a phone number first.');
-    const reference = doc(getFirestore(), 'users', currentUser.uid);
-    await setDoc(reference, {
+    const db = getSafeFirestore();
+    const userRef = doc(db, 'users', currentUser.uid);
+    await setDoc(userRef, {
       name,
       city,
       phone: currentUser.phoneNumber,
@@ -131,6 +164,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updatedAt: serverTimestamp(),
       ...(!profile ? { createdAt: serverTimestamp() } : {}),
     }, { merge: true });
+
+    // If the account offers worker services, create or update the public worker profile document
+    if (input.isWorker && input.skills && input.skills.length > 0) {
+      const workerRef = doc(db, 'workerProfiles', currentUser.uid);
+      const supportedCity: SupportedCity = city in CITY_CENTERS ? (city as SupportedCity) : 'Colombo';
+      const center = CITY_CENTERS[supportedCity];
+      const existing = await getDocFromServer(workerRef);
+      // Guarantee bio meets Firestore rules minimum length (>= 10 chars)
+      const bioText = (input.bio || '').trim();
+      const defaultBio = `Experienced tradesperson serving ${city} and nearby communities with reliable quality.`;
+      const finalBio = bioText.length >= 10 ? bioText : defaultBio;
+
+      await setDoc(workerRef, {
+        userId: currentUser.uid,
+        displayName: name,
+        city,
+        skills: input.skills,
+        bio: finalBio,
+        experienceYears: input.experienceYears ?? 1,
+        dayRateLkr: input.dayRateLkr ?? 4500,
+        serviceRadiusKm: input.serviceRadiusKm ?? 15,
+        base: { ...center, geohash: geohashForPoint(center.lat, center.lng) },
+        portfolio: [],
+        isAvailable: true,
+        updatedAt: serverTimestamp(),
+        ...(existing.exists() ? {} : {
+          createdAt: serverTimestamp(),
+          ratingAvg: 0,
+          ratingCount: 0,
+          jobsCompleted: 0,
+        }),
+      }, { merge: true });
+    }
+
     await refreshProfile();
   }, [profile, refreshProfile, user]);
 
@@ -140,10 +207,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if ((role === 'client' && !profile.isClient) || (role === 'worker' && (!profile.isWorker || !workerReady))) {
       throw new Error('This role is not ready on your account.');
     }
-    const currentUser = getAuth().currentUser;
+    let currentUser = null;
+    try {
+      currentUser = getSafeAuth().currentUser;
+    } catch {
+      // Safe fallback
+    }
     if (currentUser) {
       try {
-        await updateDoc(doc(getFirestore(), 'users', currentUser.uid), {
+        await updateDoc(doc(getSafeFirestore(), 'users', currentUser.uid), {
           activeRole: role,
           updatedAt: serverTimestamp(),
         });
@@ -156,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign in as a demo client to explore discovery and job posting without SMS requirements.
   const signInDemoClient = useCallback(() => {
-    setUser({ uid: 'demo-client-1', phoneNumber: '+94771234567' });
+    setUser({ uid: 'client-demo-1', phoneNumber: '+94771234567' });
     setProfile({
       name: 'Kamal Perera',
       phone: '+94771234567',
@@ -188,17 +260,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Firebase sign-out clears both local state and native Firebase session.
   // Sign in with phone number directly for presentation / fallback testing when carrier SMS or regional policy blocks Firebase SMS.
-  const signInWithPhoneMock = useCallback(async (phoneNumber: string) => {
+  // When isRegister is true, profile starts as null to guide the user into the profile setup screen.
+  const signInWithPhoneMock = useCallback(async (phoneNumber: string, isRegister = false) => {
     const phoneClean = phoneNumber.replace(/[\s()-]/g, '');
     const uid = 'user_' + phoneClean.replace('+', '');
     setUser({ uid, phoneNumber: phoneClean });
 
+    // Explicit registration mode always starts with an empty profile
+    if (isRegister) {
+      setProfile(null);
+      setWorkerReady(false);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const account = await getDocFromServer(doc(getFirestore(), 'users', uid));
+      const db = getSafeFirestore();
+      const account = await getDocFromServer(doc(db, 'users', uid));
       if (account.exists()) {
         const nextProfile = readProfile(account.data());
         const worker = nextProfile.isWorker
-          ? await getDocFromServer(doc(getFirestore(), 'workerProfiles', uid))
+          ? await getDocFromServer(doc(db, 'workerProfiles', uid))
           : null;
         setProfile(nextProfile);
         setWorkerReady(worker?.exists() === true);
@@ -207,16 +289,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setWorkerReady(false);
       }
     } catch {
-      // In offline or security-restricted presentation mode, create an active profile
-      setProfile({
-        name: 'Yasiru Raveen',
-        phone: phoneClean,
-        city: 'Colombo',
-        isClient: true,
-        isWorker: true,
-        activeRole: 'client',
-      });
-      setWorkerReady(true);
+      // Offline fallback: for pre-configured test accounts provide default profile; new accounts start with null
+      if (phoneClean === '+94771234567') {
+        setProfile({
+          name: 'Kamal Perera',
+          phone: phoneClean,
+          city: 'Colombo',
+          isClient: true,
+          isWorker: true,
+          activeRole: 'client',
+        });
+        setWorkerReady(true);
+      } else if (phoneClean === '+94779876543') {
+        setProfile({
+          name: 'Sunil Shantha',
+          phone: phoneClean,
+          city: 'Colombo',
+          isClient: true,
+          isWorker: true,
+          activeRole: 'worker',
+        });
+        setWorkerReady(true);
+      } else {
+        setProfile(null);
+        setWorkerReady(false);
+      }
     }
     setLoading(false);
     setError(null);

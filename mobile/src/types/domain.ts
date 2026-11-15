@@ -52,6 +52,7 @@ export type Job = {
   assignedWorkerId?: string;
   acceptedPriceLkr?: number;
   applicationCount: number;
+  city?: string;
 };
 
 export type JobApplication = {

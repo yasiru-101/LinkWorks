@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.linkworks.linkworks",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
@@ -47,6 +48,7 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
+      "@react-native-firebase/firestore",
       [
         "expo-build-properties",
         {

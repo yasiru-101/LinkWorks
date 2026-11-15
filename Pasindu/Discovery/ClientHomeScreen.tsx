@@ -1,13 +1,14 @@
-import { collection, getDocs, getFirestore, query, where } from '@react-native-firebase/firestore';
+import { collection, getDocs, query, where } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CategoryChips, type TradeCategory } from '../../Bhashitha/Design/CategoryChips';
 import { CitySelectorModal } from '../../Bhashitha/Design/CitySelectorModal';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { WorkerCard } from '../../Bhashitha/Design/WorkerCard';
 import { SEED_WORKERS } from '../../Bhashitha/Seed/seed-data';
+import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 import type { WorkerProfile } from '../../mobile/src/types/domain';
 import { distanceKm, type SupportedCity } from './geo';
 import { useSearchCenter } from './search-center';
@@ -45,8 +46,9 @@ export default function ClientHomeScreen() {
       setError(null);
       let list: WorkerProfile[] = [];
       try {
+        const db = getSafeFirestore();
         const snapshot = await getDocs(
-          query(collection(getFirestore(), 'workerProfiles'), where('isAvailable', '==', true))
+          query(collection(db, 'workerProfiles'), where('isAvailable', '==', true))
         );
         if (!snapshot.empty) {
           list = snapshot.docs.map((doc) => doc.data() as WorkerProfile);
@@ -115,116 +117,107 @@ export default function ClientHomeScreen() {
         {/* Top Header Bar */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.eyebrow}>SRI LANKA TRADES</Text>
-            <Text style={styles.heading}>Find Workers</Text>
+            <Text style={styles.eyebrow}>LINKWORKS MARKETPLACE</Text>
+            <Text style={styles.heading}>Find Tradespeople</Text>
           </View>
 
           {/* Current City / GPS Pill */}
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Select search city"
             onPress={() => setCityModalVisible(true)}
             style={[styles.cityPill, isGpsActive && styles.cityPillGps]}
           >
-            <View style={[styles.statusDot, isGpsActive ? styles.dotGps : styles.dotManual]} />
+            <Text style={styles.cityPinIcon}>📍</Text>
             <Text style={styles.cityText}>
-              {isLocating ? 'Locating…' : isGpsActive ? `GPS: ${city}` : city}
+              {isLocating ? 'Locating…' : isGpsActive ? `${city} (GPS)` : `${city} • ${radiusKm}km`}
             </Text>
+            <Text style={styles.cityDropdownIcon}>▼</Text>
           </Pressable>
         </View>
 
         {/* Out of Coverage Notice Banner */}
         {isOutOfCoverage ? (
           <View style={styles.coverageNoticeCard}>
-            <Text style={styles.coverageNoticeTitle}>🚧 We're not in your area yet!</Text>
+            <Text style={styles.coverageNoticeTitle}>🚧 Outside Standard Coverage Area</Text>
             <Text style={styles.coverageNoticeBody}>
-              LinkWorks is actively expanding across Sri Lanka. We haven't launched services in your exact area yet, but you can choose a supported city below to explore available tradespeople.
+              LinkWorks is actively expanding across Sri Lanka. Choose one of our supported hub cities below to browse verified tradespeople.
             </Text>
             <Pressable
               accessibilityRole="button"
               onPress={() => setCityModalVisible(true)}
               style={styles.coverageNoticeButton}
             >
-              <Text style={styles.coverageNoticeButtonText}>📍 Select a Supported City</Text>
+              <Text style={styles.coverageNoticeButtonText}>📍 Select a Hub City</Text>
             </Pressable>
           </View>
         ) : null}
 
-        {/* Post a Job CTA Banner */}
-        <View style={styles.postJobBanner}>
-          <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>Need a custom quote?</Text>
-            <Text style={styles.bannerSubtitle}>
-              Post your job and verified workers will send you prices.
-            </Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/post-job')}
-            style={styles.bannerButton}
-          >
-            <Text style={styles.bannerButtonText}>+ Post Job</Text>
-          </Pressable>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
+        {/* Search Bar with Search Icon */}
+        <View style={styles.searchBarWrapper}>
+          <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
-            placeholder="Search by name, skill, or keyword…"
-            placeholderTextColor="#7d9089"
+            placeholder="Search plumbers, electricians, carpenters…"
+            placeholderTextColor="#8a9e96"
             value={searchText}
             onChangeText={setSearchText}
             style={styles.searchInput}
           />
-        </View>
-
-        {/* Radius Filter Chips */}
-        <View style={styles.radiusRow}>
-          <Text style={styles.radiusLabel}>Radius:</Text>
-          {RADIUS_OPTIONS.map((r) => {
-            const isSelected = radiusKm === r;
-            return (
-              <Pressable
-                key={r}
-                accessibilityRole="button"
-                onPress={() => setRadiusKm(r)}
-                style={[styles.radiusChip, isSelected && styles.selectedRadius]}
-              >
-                <Text style={[styles.radiusText, isSelected && styles.selectedRadiusText]}>
-                  {r} km
-                </Text>
-              </Pressable>
-            );
-          })}
+          {searchText.length > 0 && (
+            <Pressable onPress={() => setSearchText('')} style={styles.clearSearchBtn}>
+              <Text style={styles.clearSearchText}>✕</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Category Horizontal Chips */}
         <CategoryChips selected={selectedCategory} onSelect={setSelectedCategory} />
 
-        {/* View Switcher: List vs Map */}
-        <View style={styles.viewModeToggle}>
-          <Pressable
-            onPress={() => setViewMode('list')}
-            style={[styles.modeButton, viewMode === 'list' && styles.modeButtonActive]}
-          >
-            <Text style={[styles.modeButtonText, viewMode === 'list' && styles.modeButtonTextActive]}>
-              📋 List View ({workers.length})
+        {/* Quick Post-a-Job Callout Banner */}
+        <View style={styles.postJobBanner}>
+          <View style={styles.bannerContent}>
+            <Text style={styles.bannerTitle}>Need quotes from multiple workers?</Text>
+            <Text style={styles.bannerSubtitle}>
+              Post your job details and verified pros will submit side-by-side prices.
             </Text>
-          </Pressable>
+          </View>
           <Pressable
-            onPress={() => setViewMode('map')}
-            style={[styles.modeButton, viewMode === 'map' && styles.modeButtonActive]}
+            accessibilityRole="button"
+            onPress={() => router.push('/post-job')}
+            style={({ pressed }) => [styles.bannerButton, pressed && { opacity: 0.85 }]}
           >
-            <Text style={[styles.modeButtonText, viewMode === 'map' && styles.modeButtonTextActive]}>
-              🗺️ Map View
-            </Text>
+            <Text style={styles.bannerButtonText}>+ Post Job</Text>
           </Pressable>
         </View>
 
-        {/* Results Location Subtitle */}
-        <View style={styles.resultsHeader}>
-          <Text style={styles.resultsLocation}>
-            {isGpsActive ? `Showing workers near your GPS position (${city})` : `Showing workers within ${radiusKm} km of ${city}`}
-          </Text>
+        {/* Section Header with List vs Map Segmented Pill */}
+        <View style={styles.sectionHeaderRow}>
+          <View>
+            <Text style={styles.sectionTitle}>Nearby Verified Pros</Text>
+            <Text style={styles.resultsLocation}>
+              {workers.length} {workers.length === 1 ? 'tradesperson' : 'tradespeople'} found in {city}
+            </Text>
+          </View>
+
+          {/* Segmented Switcher */}
+          <View style={styles.viewModeToggle}>
+            <Pressable
+              onPress={() => setViewMode('list')}
+              style={[styles.modeButton, viewMode === 'list' && styles.modeButtonActive]}
+            >
+              <Text style={[styles.modeButtonText, viewMode === 'list' && styles.modeButtonTextActive]}>
+                List
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setViewMode('map')}
+              style={[styles.modeButton, viewMode === 'map' && styles.modeButtonActive]}
+            >
+              <Text style={[styles.modeButtonText, viewMode === 'map' && styles.modeButtonTextActive]}>
+                Map
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Content based on View Mode */}
@@ -321,33 +314,105 @@ const styles = StyleSheet.create({
   cityPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: palette.surface,
+    gap: 5,
+    backgroundColor: '#ffffff',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: '#cde0d7',
+    shadowColor: '#034e3f',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
   cityPillGps: {
     borderColor: '#86efac',
     backgroundColor: '#f0fdf4',
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  cityPinIcon: {
+    fontSize: 13,
   },
-  dotGps: {
-    backgroundColor: '#059669',
-  },
-  dotManual: {
-    backgroundColor: '#9ca3af',
+  cityDropdownIcon: {
+    fontSize: 9,
+    color: palette.muted,
   },
   cityText: {
     color: palette.heading,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
+    fontFamily: 'Plus Jakarta Sans',
+  },
+  searchBarWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#d2e2db',
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 4,
+    shadowColor: '#034e3f',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: palette.heading,
+    fontFamily: 'Plus Jakarta Sans',
+    paddingVertical: 6,
+  },
+  clearSearchBtn: {
+    padding: 4,
+  },
+  clearSearchText: {
+    fontSize: 12,
+    color: palette.muted,
+    fontWeight: '700',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    color: palette.heading,
+    fontSize: 17,
+    fontWeight: '800',
+    fontFamily: 'Plus Jakarta Sans',
+  },
+  viewModeToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#e6f1ec',
+    padding: 3,
+    borderRadius: 100,
+  },
+  modeButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 100,
+  },
+  modeButtonActive: {
+    backgroundColor: palette.primary,
+  },
+  modeButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: palette.primary,
+    fontFamily: 'Plus Jakarta Sans',
+  },
+  modeButtonTextActive: {
+    color: '#ffffff',
   },
   coverageNoticeCard: {
     backgroundColor: '#fef3c7',
@@ -413,19 +478,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  searchContainer: {
-    backgroundColor: palette.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: palette.border,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-  },
-  searchInput: {
-    fontSize: 15,
-    color: palette.heading,
-    paddingVertical: 8,
-  },
+
   radiusRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -457,37 +510,7 @@ const styles = StyleSheet.create({
   selectedRadiusText: {
     color: '#ffffff',
   },
-  viewModeToggle: {
-    flexDirection: 'row',
-    backgroundColor: '#f4f4f5',
-    padding: 3,
-    borderRadius: 10,
-    marginTop: spacing.xs,
-  },
-  modeButton: {
-    flex: 1,
-    paddingVertical: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-  },
-  modeButtonActive: {
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  modeButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: palette.muted,
-  },
-  modeButtonTextActive: {
-    color: palette.heading,
-    fontWeight: '700',
-  },
+
   resultsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { palette, spacing } from './theme';
 
 export const TRADE_CATEGORIES = [
@@ -15,7 +15,19 @@ export const TRADE_CATEGORIES = [
 
 export type TradeCategory = typeof TRADE_CATEGORIES[number];
 
-// Horizontal scrolling category chips allowing quick filtering by skilled trade.
+const CATEGORY_ICONS: Record<TradeCategory, string> = {
+  All: '✨',
+  Carpentry: '🪚',
+  Plumbing: '🔧',
+  Electrical: '⚡',
+  Masonry: '🧱',
+  Painting: '🎨',
+  Gardening: '🌿',
+  'AC Repair': '❄️',
+  Roofing: '🏠',
+};
+
+// Horizontal scrolling category chips allowing quick filtering by skilled trade with visual icons.
 export function CategoryChips({
   selected,
   onSelect,
@@ -31,6 +43,7 @@ export function CategoryChips({
     >
       {TRADE_CATEGORIES.map((category) => {
         const isSelected = selected === category;
+        const icon = CATEGORY_ICONS[category];
         return (
           <Pressable
             key={category}
@@ -39,6 +52,7 @@ export function CategoryChips({
             onPress={() => onSelect(category)}
             style={[styles.chip, isSelected && styles.selectedChip]}
           >
+            <Text style={styles.icon}>{icon}</Text>
             <Text style={[styles.text, isSelected && styles.selectedText]}>{category}</Text>
           </Pressable>
         );
@@ -50,25 +64,38 @@ export function CategoryChips({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
+    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
   },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: palette.surface,
-    borderWidth: 1,
-    borderColor: palette.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 15,
+    paddingVertical: 9,
+    borderRadius: 100,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#d8e6df',
+    shadowColor: '#034e3f',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   selectedChip: {
     backgroundColor: palette.primary,
     borderColor: palette.primary,
   },
+  icon: {
+    fontSize: 14,
+  },
   text: {
-    color: palette.muted,
+    color: palette.heading,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: 'Plus Jakarta Sans',
   },
   selectedText: {
     color: '#ffffff',

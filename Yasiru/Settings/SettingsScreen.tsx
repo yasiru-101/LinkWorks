@@ -1,4 +1,4 @@
-import { doc, getDoc, getFirestore, updateDoc } from '@react-native-firebase/firestore';
+import { doc, getDoc, getFirestore, serverTimestamp, updateDoc } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
@@ -45,8 +45,10 @@ export default function SettingsScreen() {
     try {
       setUpdatingAvailability(true);
       setError('');
+      // Update availability status and server timestamp to comply with Firestore validation rules
       await updateDoc(doc(getFirestore(), 'workerProfiles', user.uid), {
         isAvailable: newValue,
+        updatedAt: serverTimestamp(),
       });
       setSuccessMsg(newValue ? 'You are now visible to nearby clients!' : 'Availability paused. You will not appear in search.');
     } catch (cause) {

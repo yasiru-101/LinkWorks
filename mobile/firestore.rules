@@ -27,6 +27,7 @@ service cloud.firestore {
           && data.isClient is bool && data.isWorker is bool
           && (data.isClient || data.isWorker)
           && validRole(data)
+          && (!('fcmToken' in data) || (data.fcmToken is string && data.fcmToken.size() > 0))
           && data.updatedAt == request.time;
       }
 
@@ -34,13 +35,13 @@ service cloud.firestore {
       allow list: if false;
       allow create: if owns(userId)
         && request.resource.data.keys().hasOnly([
-          'name', 'phone', 'city', 'isClient', 'isWorker', 'activeRole', 'createdAt', 'updatedAt'
+          'name', 'phone', 'city', 'isClient', 'isWorker', 'activeRole', 'createdAt', 'updatedAt', 'fcmToken'
         ])
         && request.resource.data.createdAt == request.time
         && validAccount(request.resource.data);
       allow update: if owns(userId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'name', 'city', 'isClient', 'isWorker', 'activeRole', 'updatedAt'
+          'name', 'city', 'isClient', 'isWorker', 'activeRole', 'updatedAt', 'fcmToken'
         ])
         && validAccount(request.resource.data);
       allow delete: if false;
@@ -119,6 +120,7 @@ service cloud.firestore {
           && data.get('budgetMinLkr', 0) is int && data.get('budgetMinLkr', 0) >= 0
           && data.get('budgetMaxLkr', 0) is int && data.get('budgetMaxLkr', 0) >= data.get('budgetMinLkr', 0)
           && validLocation(data.geo)
+          && (!('city' in data) || (data.city is string && data.city.size() > 0 && data.city.size() <= 80))
           && data.addressText is string && data.addressText.size() > 0
           && data.applicationCount is int && data.applicationCount >= 0
           && data.updatedAt == request.time;
@@ -134,21 +136,56 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'clientId', 'title', 'description', 'categoryId', 'photos', 'budgetMinLkr',
           'budgetMaxLkr', 'geo', 'addressText', 'preferredDate', 'status',
-          'applicationCount', 'createdAt', 'updatedAt'
+          'applicationCount', 'createdAt', 'updatedAt', 'city'
         ])
         && request.resource.data.status == 'open'
         && request.resource.data.applicationCount == 0
         && request.resource.data.createdAt == request.time
         && validJob(request.resource.data);
       allow update: if signedIn()
-        && resource.data.clientId == request.auth.uid
-        && resource.data.status == 'open'
-        && request.resource.data.status in ['open', 'cancelled']
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'title', 'description', 'categoryId', 'photos', 'budgetMinLkr',
-          'budgetMaxLkr', 'geo', 'addressText', 'preferredDate', 'status', 'updatedAt'
-        ])
-        && validJob(request.resource.data);
+        && (
+          // Client edits open job details
+          (resource.data.clientId == request.auth.uid
+            && resource.data.status == 'open'
+            && request.resource.data.status in ['open', 'cancelled']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'title', 'description', 'categoryId', 'photos', 'budgetMinLkr',
+              'budgetMaxLkr', 'geo', 'addressText', 'preferredDate', 'status', 'updatedAt', 'city'
+            ])
+            && validJob(request.resource.data))
+          ||
+          // Client assigns an applicant to an open job
+          (resource.data.clientId == request.auth.uid
+            && resource.data.status == 'open'
+            && request.resource.data.status == 'assigned'
+            && request.resource.data.assignedWorkerId is string && request.resource.data.assignedWorkerId.size() > 0
+            && request.resource.data.acceptedPriceLkr is int && request.resource.data.acceptedPriceLkr > 0
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'assignedWorkerId', 'acceptedPriceLkr', 'updatedAt'
+            ])
+            && request.resource.data.updatedAt == request.time)
+          ||
+          // Starting work on assigned job
+          (resource.data.status == 'assigned'
+            && request.resource.data.status == 'in_progress'
+            && request.auth.uid in [resource.data.clientId, resource.data.assignedWorkerId]
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+            && request.resource.data.updatedAt == request.time)
+          ||
+          // Client confirming completion of in_progress job
+          (resource.data.status == 'in_progress'
+            && request.resource.data.status == 'completed'
+            && request.auth.uid == resource.data.clientId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+            && request.resource.data.updatedAt == request.time)
+          ||
+          // Client cancelling an assigned or in_progress job
+          (resource.data.status in ['assigned', 'in_progress']
+            && request.resource.data.status == 'cancelled'
+            && request.auth.uid == resource.data.clientId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+            && request.resource.data.updatedAt == request.time)
+        );
       allow delete: if false;
 
       // Workers submit one quote; clients may list their own job's applications.
@@ -170,8 +207,29 @@ service cloud.firestore {
           && request.resource.data.status == 'submitted'
           && request.resource.data.createdAt == request.time
           && request.resource.data.updatedAt == request.time;
-        allow update, delete: if false;
+        allow update: if signedIn()
+          && (
+            // Client accepts or rejects quote during open job assignment
+            (request.auth.uid == parentJob().clientId
+              && parentJob().status == 'open'
+              && request.resource.data.status in ['accepted', 'rejected']
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+              && request.resource.data.updatedAt == request.time)
+            ||
+            // Worker withdraws their own submitted quote
+            (owns(workerId)
+              && resource.data.status == 'submitted'
+              && request.resource.data.status == 'withdrawn'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+              && request.resource.data.updatedAt == request.time)
+          );
+        allow delete: if false;
       }
+    }
+
+    // Allow workers to list their own applications across all jobs in collectionGroup queries
+    match /{path=**}/applications/{workerId} {
+      allow read: if signedIn() && (request.auth.uid == workerId || resource.data.workerId == request.auth.uid);
     }
 
     // Phase 3: Real-time chat accessible only to the job's assigned client and worker.

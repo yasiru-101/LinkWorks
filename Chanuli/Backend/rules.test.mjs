@@ -97,6 +97,36 @@ try {
   await assertFails(updateDoc(doc(worker, 'jobs/job-two/applications/worker'), { status: 'accepted' }));
   await assertFails(getDoc(doc(stranger, 'jobs/job-two/applications/worker')));
 
+  // Test worker withdrawal on open job-three
+  const jobThreeRef = doc(owner, 'jobs/job-three');
+  const jobThreeData = { clientId: 'owner', title: 'Third open job', description: 'Repair tertiary pipe',
+    categoryId: 'plumbing', city: 'Colombo', photos: [], budgetMinLkr: 2000, budgetMaxLkr: 4000,
+    geo: { lat: 6.9271, lng: 79.8612, geohash: 'tc0m0m0m0' }, addressText: 'Colombo city',
+    status: 'open', applicationCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+  await assertSucceeds(setDoc(jobThreeRef, jobThreeData));
+  await assertSucceeds(setDoc(doc(worker, 'jobs/job-three/applications/worker'), { ...application, status: 'submitted' }));
+  await assertSucceeds(updateDoc(doc(worker, 'jobs/job-three/applications/worker'), { status: 'withdrawn', updatedAt: serverTimestamp() }));
+
+  // Test quote acceptance and full job lifecycle on job-four
+  const jobFourRef = doc(owner, 'jobs/job-four');
+  const jobFourData = { clientId: 'owner', title: 'Fourth open job', description: 'Repair quaternary pipe',
+    categoryId: 'plumbing', city: 'Colombo', photos: [], budgetMinLkr: 2000, budgetMaxLkr: 4000,
+    geo: { lat: 6.9271, lng: 79.8612, geohash: 'tc0m0m0m0' }, addressText: 'Colombo city',
+    status: 'open', applicationCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+  await assertSucceeds(setDoc(jobFourRef, jobFourData));
+  await assertSucceeds(setDoc(doc(worker, 'jobs/job-four/applications/worker'), { ...application, status: 'submitted' }));
+  await assertSucceeds(updateDoc(doc(owner, 'jobs/job-four/applications/worker'), { status: 'accepted', updatedAt: serverTimestamp() }));
+  await assertSucceeds(updateDoc(jobFourRef, { status: 'assigned', assignedWorkerId: 'worker', acceptedPriceLkr: 4200, updatedAt: serverTimestamp() }));
+
+  // Worker starts work on assigned job -> in_progress
+  await assertSucceeds(updateDoc(doc(worker, 'jobs/job-four'), { status: 'in_progress', updatedAt: serverTimestamp() }));
+
+  // Client confirms job completion -> completed
+  await assertSucceeds(updateDoc(doc(owner, 'jobs/job-four'), { status: 'completed', updatedAt: serverTimestamp() }));
+
+  // User saves FCM device token for notifications
+  await assertSucceeds(updateDoc(doc(owner, 'users/owner'), { fcmToken: 'fcm-device-token-abc', updatedAt: serverTimestamp() }));
+
   // Phase 3: Real-time chat security
   // Owner and worker are assigned participants in chat-job-two
   const chatRef = doc(owner, 'chats/job-two');

@@ -1,4 +1,4 @@
-import { collection, getDocs, getFirestore, query, where } from '@react-native-firebase/firestore';
+import { collection, getDocs, query, where } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -6,9 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Action } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { JobCard } from '../../Bhashitha/Design/JobCard';
-import { SEED_JOBS } from '../../Bhashitha/Seed/seed-data';
+import { getLocalDynamicJobs, SEED_JOBS } from '../../Bhashitha/Seed/seed-data';
 import type { Job, JobStatus } from '../../mobile/src/types/domain';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
+import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 
 type StatusFilter = 'all' | JobStatus;
 
@@ -29,7 +30,7 @@ export default function MyJobsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load client's posted jobs from Firestore.
+  // Load client's posted jobs from Firestore and local dynamic session store.
   const loadJobs = useCallback(async () => {
     if (!user) return;
     try {
@@ -37,8 +38,9 @@ export default function MyJobsScreen() {
       let list: Array<Job & { id: string }> = [];
 
       try {
+        const db = getSafeFirestore();
         const snapshot = await getDocs(
-          query(collection(getFirestore(), 'jobs'), where('clientId', '==', user.uid))
+          query(collection(db, 'jobs'), where('clientId', '==', user.uid))
         );
         if (!snapshot.empty) {
           list = snapshot.docs.map((docSnap) => ({
@@ -51,7 +53,18 @@ export default function MyJobsScreen() {
         list = SEED_JOBS.filter((j) => j.clientId === 'client-demo-1');
       }
 
-      setJobs(list);
+      // Merge dynamic jobs posted during this app session
+      const dynamicJobs = getLocalDynamicJobs().filter(
+        (j) => j.clientId === user.uid || (user.uid === 'client-demo-1' && j.clientId === 'client-demo-1')
+      );
+
+      // Combine dynamic jobs on top, avoiding duplicate ids
+      const combined = [
+        ...dynamicJobs,
+        ...list.filter((j) => !dynamicJobs.some((d) => d.id === j.id)),
+      ];
+
+      setJobs(combined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load your jobs.');
     } finally {

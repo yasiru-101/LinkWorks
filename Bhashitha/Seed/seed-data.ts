@@ -306,3 +306,20 @@ export const SEED_REVIEWS: SeedReview[] = [
     createdAt: '2026-10-22',
   },
 ];
+
+// In-memory jobs created during the current app session.
+// Used as immediate feedback and fallback when Firestore network sync is in offline or demo presentation mode.
+export const LOCAL_DYNAMIC_JOBS: Array<Job & { id: string }> = [];
+
+// Add a newly posted job to the dynamic session array.
+export function addLocalDynamicJob(job: Job & { id: string }) {
+  // Prevent duplicate insertion
+  if (!LOCAL_DYNAMIC_JOBS.some((existing) => existing.id === job.id)) {
+    LOCAL_DYNAMIC_JOBS.unshift(job);
+  }
+}
+
+// Retrieve dynamic jobs posted during this app session.
+export function getLocalDynamicJobs(): Array<Job & { id: string }> {
+  return LOCAL_DYNAMIC_JOBS;
+}

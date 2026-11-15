@@ -2,6 +2,7 @@ import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { ActivityIndicator, Pressable, Text, useColorScheme, View } from 'react-native';
 import { AuthProvider, useAuth } from '../../../Yasiru/Auth/AuthContext';
+import { ensureFirebaseApp } from '../../../Yasiru/Auth/firebase';
 
 import { SearchCenterProvider } from '../../../Pasindu/Discovery/search-center';
 
@@ -39,6 +40,9 @@ function ProtectedStack() {
 
 // Load the brand font once, then provide the native session to every route.
 export default function RootLayout() {
+  // Eagerly ensure Firebase default app instance is ready before auth listeners attach
+  ensureFirebaseApp();
+
   const colorScheme = useColorScheme();
   const [fontsLoaded] = useFonts({
     'Plus Jakarta Sans': require('../../assets/fonts/PlusJakartaSans.ttf'),

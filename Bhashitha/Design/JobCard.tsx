@@ -6,7 +6,7 @@ import { palette, spacing } from './theme';
 function getStatusStyle(status: Job['status']) {
   switch (status) {
     case 'open':
-      return { label: 'Open', bg: '#e6f7ef', text: '#027a48' };
+      return { label: 'Open for Quotes', bg: '#e6f7ef', text: '#027a48' };
     case 'assigned':
       return { label: 'Assigned', bg: '#eff8ff', text: '#175cd3' };
     case 'in_progress':
@@ -20,7 +20,7 @@ function getStatusStyle(status: Job['status']) {
   }
 }
 
-// Render a job card for client's My Jobs or worker's Feed with budget, distance, and status.
+// Render an elevated job card matching LinkWorks design specifications.
 export function JobCard({
   job,
   distanceKm,
@@ -33,9 +33,9 @@ export function JobCard({
   const statusInfo = getStatusStyle(job.status);
   const budgetText =
     job.budgetMinLkr && job.budgetMaxLkr
-      ? `Rs. ${job.budgetMinLkr.toLocaleString()} – ${job.budgetMaxLkr.toLocaleString()}`
+      ? `LKR ${job.budgetMinLkr.toLocaleString()} – ${job.budgetMaxLkr.toLocaleString()}`
       : job.budgetMaxLkr
-      ? `Up to Rs. ${job.budgetMaxLkr.toLocaleString()}`
+      ? `Up to LKR ${job.budgetMaxLkr.toLocaleString()}`
       : 'Negotiable Budget';
 
   return (
@@ -47,8 +47,10 @@ export function JobCard({
     >
       <View style={styles.header}>
         <View style={styles.titleArea}>
-          <Text style={styles.category}>{job.categoryId.toUpperCase()}</Text>
-          <Text style={styles.title}>{job.title}</Text>
+          <View style={styles.categoryPill}>
+            <Text style={styles.categoryText}>🛠️ {job.categoryId.toUpperCase()}</Text>
+          </View>
+          <Text style={styles.title} numberOfLines={2}>{job.title}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusInfo.bg }]}>
           <Text style={[styles.statusText, { color: statusInfo.text }]}>{statusInfo.label}</Text>
@@ -59,22 +61,38 @@ export function JobCard({
         {job.description}
       </Text>
 
+      {/* Budget and Location Pills */}
       <View style={styles.metaRow}>
-        <Text style={styles.budget}>{budgetText}</Text>
+        <View style={styles.budgetBox}>
+          <Text style={styles.budgetLabel}>Budget:</Text>
+          <Text style={styles.budgetValue}>{budgetText}</Text>
+        </View>
+
         {distanceKm !== undefined ? (
-          <Text style={styles.distance}>{distanceKm.toFixed(1)} km away</Text>
+          <View style={styles.distanceBox}>
+            <Text style={styles.distanceText}>📍 {distanceKm.toFixed(1)} km away</Text>
+          </View>
         ) : (
-          <Text style={styles.location}>{job.addressText}</Text>
+          <View style={styles.distanceBox}>
+            <Text style={styles.distanceText} numberOfLines={1}>📍 {job.addressText}</Text>
+          </View>
         )}
       </View>
 
+      {/* Footer: Preferred Timing & Quotes Count */}
       <View style={styles.footer}>
         <Text style={styles.preferredDate}>
           📅 {job.preferredDate ? `Needed by ${job.preferredDate}` : 'Flexible timing'}
         </Text>
-        <Text style={styles.applications}>
-          {job.applicationCount} {job.applicationCount === 1 ? 'quote' : 'quotes'}
-        </Text>
+
+        <View style={styles.applyActionRow}>
+          <Text style={styles.quotesCount}>
+            {job.applicationCount || 0} quotes
+          </Text>
+          <View style={styles.applyButtonPill}>
+            <Text style={styles.applyButtonText}>Details →</Text>
+          </View>
+        </View>
       </View>
     </Pressable>
   );
@@ -82,88 +100,148 @@ export function JobCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: palette.surface,
-    borderRadius: 16,
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: palette.border,
-    marginBottom: spacing.xs,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 18,
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: '#e2ece7',
+    marginBottom: 12,
+    shadowColor: '#034e3f',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   pressed: {
-    opacity: 0.9,
+    opacity: 0.92,
     backgroundColor: '#fafefc',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: spacing.sm,
+    gap: 10,
   },
   titleArea: {
     flex: 1,
-    gap: 2,
+    gap: 6,
   },
-  category: {
-    color: palette.primary,
-    fontSize: 11,
+  categoryPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#f2f8f5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#dcece4',
+  },
+  categoryText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1,
+    color: palette.primary,
   },
   title: {
-    color: palette.heading,
-    fontSize: 17,
-    fontWeight: '700',
     fontFamily: 'Plus Jakarta Sans',
+    fontSize: 16,
+    fontWeight: '800',
+    color: palette.heading,
+    lineHeight: 22,
   },
   statusBadge: {
-    paddingHorizontal: 10,
+    borderRadius: 100,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 10,
+    fontWeight: '800',
   },
   description: {
-    color: '#344454',
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 13,
-    lineHeight: 18,
+    color: '#344454',
+    lineHeight: 19,
   },
   metaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    justifyContent: 'space-between',
+    gap: 8,
+    flexWrap: 'wrap',
   },
-  budget: {
+  budgetBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f0f8f4',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#d2e5dc',
+  },
+  budgetLabel: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    color: palette.muted,
+  },
+  budgetValue: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 12,
+    fontWeight: '800',
     color: palette.primary,
-    fontSize: 15,
-    fontWeight: '700',
   },
-  distance: {
+  distanceBox: {
+    backgroundColor: '#f8faf9',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e8f0ec',
+  },
+  distanceText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
     color: palette.muted,
-    fontSize: 13,
     fontWeight: '600',
-  },
-  location: {
-    color: palette.muted,
-    fontSize: 13,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: spacing.xs,
+    alignItems: 'center',
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f0f5f3',
+    borderTopColor: '#f0f5f2',
   },
   preferredDate: {
-    color: palette.muted,
-    fontSize: 12,
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    color: '#657e76',
   },
-  applications: {
-    color: palette.heading,
-    fontSize: 12,
+  applyActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quotesCount: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    color: palette.muted,
     fontWeight: '600',
+  },
+  applyButtonPill: {
+    backgroundColor: '#eaf4f0',
+    borderRadius: 100,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  applyButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    fontWeight: '700',
+    color: palette.primary,
   },
 });

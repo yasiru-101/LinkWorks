@@ -21,7 +21,7 @@ const statusIcons = require('../../assets/images/login/status-icons.png');
 
 export default function WelcomeScreen() {
   const { width } = useWindowDimensions();
-  const { user, profile, workerReady, signInDemoClient, signInDemoWorker } = useAuth();
+  const { user, profile, workerReady, signInDemoClient, signInDemoWorker, signOut } = useAuth();
 
   // Redirect to main tabs as soon as user profile is authenticated
   useEffect(() => {
@@ -76,7 +76,12 @@ export default function WelcomeScreen() {
           <View style={styles.actions}>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push({ pathname: '/phone', params: { mode: 'register' } })}
+              onPress={() => {
+                if (user) {
+                  void signOut();
+                }
+                router.push({ pathname: '/phone', params: { mode: 'register' } });
+              }}
               style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
               <Text style={styles.primaryLabel}>Create Account</Text>
               <Image source={arrow} style={styles.arrow} />
@@ -84,7 +89,12 @@ export default function WelcomeScreen() {
 
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push({ pathname: '/phone', params: { mode: 'login' } })}
+              onPress={() => {
+                if (user) {
+                  void signOut();
+                }
+                router.push({ pathname: '/phone', params: { mode: 'login' } });
+              }}
               style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
               <Text style={styles.secondaryLabel}>Log In</Text>
             </Pressable>

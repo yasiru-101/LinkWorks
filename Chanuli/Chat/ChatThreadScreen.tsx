@@ -3,7 +3,6 @@ import {
   collection,
   doc,
   getDocFromServer,
-  getFirestore,
   onSnapshot,
   orderBy,
   query,
@@ -11,7 +10,7 @@ import {
   updateDoc,
 } from '@react-native-firebase/firestore';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -27,6 +26,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
+import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 
 type MessageItem = {
   id: string;
@@ -34,44 +34,55 @@ type MessageItem = {
   text: string;
   createdAtText?: string;
   isSelf: boolean;
+  photoUrl?: string;
+  photoCaption?: string;
 };
 
-// Fallback demo conversation messages.
+// Fallback demo conversation messages matching the mockup.
 const DEMO_THREAD_MESSAGES: MessageItem[] = [
   {
     id: 'm1',
     senderId: 'worker-colombo-plumber-1',
-    text: 'Hello! I am on my way with the replacement PVC pipes and tools.',
-    createdAtText: '10:15 AM',
+    text: 'Hello Kamal! I have the replacement brass valves and pressure pump ready. Heading over now.',
+    createdAtText: '10:16 AM',
     isSelf: false,
   },
   {
     id: 'm2',
     senderId: 'demo-client-1',
-    text: 'Great! The kitchen is on the ground floor. Let me know if you need parking.',
+    text: 'Great Sunil! Please call me when you reach the gate, I will buzz you in.',
     createdAtText: '10:18 AM',
     isSelf: true,
   },
   {
     id: 'm3',
     senderId: 'worker-colombo-plumber-1',
-    text: 'Understood. Should take around 45 minutes to complete the seal repair.',
+    text: 'Here is the high-pressure brass valve I will be installing:',
+    photoCaption: 'Brass Valve Replacement (3/4 inch)',
     createdAtText: '10:20 AM',
     isSelf: false,
   },
+  {
+    id: 'm4',
+    senderId: 'demo-client-1',
+    text: 'Looks solid! See you soon.',
+    createdAtText: '10:22 AM',
+    isSelf: true,
+  },
 ];
 
-// Active real-time job chat screen for assigned client and worker.
+// High-fidelity real-time job-linked chat thread matching LinkWorks mockup.
 export default function ChatThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>(); // jobId
   const { user, profile } = useAuth();
 
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [inputText, setInputText] = useState('');
-  const [jobTitle, setJobTitle] = useState('Job Discussion');
-  const [otherName, setOtherName] = useState('Tradesperson');
+  const [jobTitle, setJobTitle] = useState('Fix Main Water Leak');
+  const [otherName, setOtherName] = useState('Sunil Perera');
   const [otherPhone, setOtherPhone] = useState('+94779876543');
   const [jobStatus, setJobStatus] = useState('assigned');
+  const [agreedPrice, setAgreedPrice] = useState('14,500');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
@@ -84,10 +95,10 @@ export default function ChatThreadScreen() {
 
     async function fetchChatHeader() {
       try {
-        const chatSnap = await getDocFromServer(doc(getFirestore(), 'chats', id));
+        const chatSnap = await getDocFromServer(doc(getSafeFirestore(), 'chats', id));
         if (chatSnap.exists()) {
           const data = chatSnap.data();
-          setJobTitle(data.jobTitle || 'Job Chat');
+          setJobTitle(data.jobTitle || 'Fix Main Water Leak');
           setJobStatus(data.jobStatus || 'assigned');
           const isClient = data.participants?.[0] === currentUid;
           const otherInfo = isClient ? data.workerInfo : data.clientInfo;
@@ -106,7 +117,7 @@ export default function ChatThreadScreen() {
     let unsubscribe = () => {};
     try {
       const q = query(
-        collection(getFirestore(), 'chats', id, 'messages'),
+        collection(getSafeFirestore(), 'chats', id, 'messages'),
         orderBy('createdAt', 'asc')
       );
 
@@ -122,22 +133,23 @@ export default function ChatThreadScreen() {
                 text: data.text,
                 isSelf: data.senderId === currentUid,
                 createdAtText: 'Just now',
+                photoCaption: data.photoCaption,
               };
             });
             setMessages(list);
           } else {
-            setMessages(DEMO_THREAD_MESSAGES.map((m) => ({ ...m, isSelf: m.senderId === currentUid })));
+            setMessages(DEMO_THREAD_MESSAGES.map((m) => ({ ...m, isSelf: m.senderId === currentUid || m.senderId === 'demo-client-1' })));
           }
           setLoading(false);
         },
         () => {
           // Fall back to demo messages on snapshot error or offline
-          setMessages(DEMO_THREAD_MESSAGES.map((m) => ({ ...m, isSelf: m.senderId === currentUid })));
+          setMessages(DEMO_THREAD_MESSAGES.map((m) => ({ ...m, isSelf: m.senderId === currentUid || m.senderId === 'demo-client-1' })));
           setLoading(false);
         }
       );
     } catch {
-      setMessages(DEMO_THREAD_MESSAGES.map((m) => ({ ...m, isSelf: m.senderId === currentUid })));
+      setMessages(DEMO_THREAD_MESSAGES.map((m) => ({ ...m, isSelf: m.senderId === currentUid || m.senderId === 'demo-client-1' })));
       setLoading(false);
     }
 
@@ -156,9 +168,10 @@ export default function ChatThreadScreen() {
 
     try {
       try {
-        const firestore = getFirestore();
+        const firestore = getSafeFirestore();
         await addDoc(collection(firestore, 'chats', id, 'messages'), {
           senderId: user.uid,
+          senderName: profile?.name || 'LinkWorks Member',
           text: textToSend,
           createdAt: serverTimestamp(),
           readBy: [user.uid],
@@ -186,45 +199,96 @@ export default function ChatThreadScreen() {
     }
   }
 
+  // Quick photo upload simulation for demo
+  function sendHardwarePhoto() {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `photo-${Date.now()}`,
+        senderId: user?.uid || 'self',
+        text: 'Attaching photo of replacement part for reference:',
+        photoCaption: 'Brass Valve Replacement (3/4 inch)',
+        createdAtText: 'Just now',
+        isSelf: true,
+      },
+    ]);
+  }
+
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Chat Header Banner with Call CTA */}
+        {/* Top Header Navigation Row */}
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>← Back</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.8 }]}
+          >
+            <Text style={styles.backButtonText}>←</Text>
           </Pressable>
+
+          <View style={styles.headerAvatar}>
+            <Text style={styles.headerAvatarLetter}>{otherName.charAt(0).toUpperCase()}</Text>
+            <View style={styles.headerOnlineDot} />
+          </View>
 
           <View style={styles.headerInfo}>
             <Text numberOfLines={1} style={styles.headerTitle}>{otherName}</Text>
-            <Text numberOfLines={1} style={styles.headerSubtitle}>{jobTitle}</Text>
+            <Text numberOfLines={1} style={styles.headerSubtitle}>
+              {profile?.activeRole === 'client' ? 'Master Plumber • Online' : 'Client • Online'}
+            </Text>
           </View>
 
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Call ${otherName}`}
             onPress={() => Linking.openURL(`tel:${otherPhone}`)}
-            style={styles.callIcon}
+            style={({ pressed }) => [styles.callIconBtn, pressed && { opacity: 0.8 }]}
           >
             <Text style={styles.callIconText}>📞</Text>
           </Pressable>
         </View>
 
-        {/* Status Reminder Pill */}
-        <View style={styles.statusPill}>
-          <Text style={styles.statusPillText}>
-            Status: {jobStatus.replace('_', ' ').toUpperCase()} • Contact verified
-          </Text>
+        {/* Persistent Pinned Job Context Banner */}
+        <Pressable
+          onPress={() => router.push({ pathname: '/job/[id]', params: { id } })}
+          style={styles.jobContextBanner}
+        >
+          <View style={styles.jobBannerLeft}>
+            <View style={styles.jobBannerIconBox}>
+              <Text style={styles.jobBannerIcon}>🛠️</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text numberOfLines={1} style={styles.jobBannerTitle}>{jobTitle}</Text>
+              <Text style={styles.jobBannerSub}>
+                Agreed Rate: LKR {agreedPrice}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.jobBannerRight}>
+            <View style={styles.jobBannerStatusPill}>
+              <Text style={styles.jobBannerStatusText}>
+                {jobStatus.toUpperCase()}
+              </Text>
+            </View>
+            <Text style={styles.jobBannerDetailsLink}>Details →</Text>
+          </View>
+        </Pressable>
+
+        {/* Date Timestamp Divider */}
+        <View style={styles.dateDivider}>
+          <Text style={styles.dateDividerText}>TODAY</Text>
         </View>
 
         {/* Message Thread List */}
         {loading ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={palette.primary} />
-            <Text style={styles.loadingText}>Loading chat…</Text>
+            <Text style={styles.loadingText}>Loading messages…</Text>
           </View>
         ) : (
           <FlatList
@@ -236,42 +300,99 @@ export default function ChatThreadScreen() {
             renderItem={({ item }) => (
               <View
                 style={[
-                  styles.messageBubble,
-                  item.isSelf ? styles.selfBubble : styles.otherBubble,
+                  styles.messageRow,
+                  item.isSelf ? styles.selfRow : styles.otherRow,
                 ]}
               >
-                <Text style={[styles.messageText, item.isSelf ? styles.selfText : styles.otherText]}>
-                  {item.text}
-                </Text>
-                {item.createdAtText ? (
-                  <Text style={[styles.timeText, item.isSelf ? styles.selfTime : styles.otherTime]}>
-                    {item.createdAtText}
+                {!item.isSelf && (
+                  <View style={styles.bubbleAvatar}>
+                    <Text style={styles.bubbleAvatarLetter}>
+                      {otherName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+
+                <View
+                  style={[
+                    styles.messageBubble,
+                    item.isSelf ? styles.selfBubble : styles.otherBubble,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.messageText,
+                      item.isSelf ? styles.selfText : styles.otherText,
+                    ]}
+                  >
+                    {item.text}
                   </Text>
-                ) : null}
+
+                  {/* Optional Hardware Photo Attachment Card */}
+                  {item.photoCaption && (
+                    <View style={styles.photoAttachmentCard}>
+                      <View style={styles.photoPlaceholderBox}>
+                        <Text style={styles.photoCameraIcon}>📷</Text>
+                        <Text style={styles.photoAttachmentLabel}>Hardware Spec Attachment</Text>
+                      </View>
+                      <Text style={styles.photoCaptionText}>{item.photoCaption}</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.bubbleFooter}>
+                    {item.createdAtText ? (
+                      <Text
+                        style={[
+                          styles.timeText,
+                          item.isSelf ? styles.selfTime : styles.otherTime,
+                        ]}
+                      >
+                        {item.createdAtText}
+                      </Text>
+                    ) : null}
+                    {item.isSelf && <Text style={styles.readTicks}> ✓✓</Text>}
+                  </View>
+                </View>
               </View>
             )}
           />
         )}
 
-        {/* Input Bar */}
+        {/* Bottom Chat Input Bar */}
         <View style={styles.inputBar}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Attach photo"
+            onPress={sendHardwarePhoto}
+            style={styles.attachmentButton}
+          >
+            <Text style={styles.attachmentIcon}>📷</Text>
+          </Pressable>
+
           <TextInput
             placeholder="Type a message…"
-            placeholderTextColor="#7d9089"
+            placeholderTextColor="#8aa096"
             value={inputText}
             onChangeText={setInputText}
             style={styles.textInput}
             multiline
             maxLength={1000}
           />
+
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Send message"
             disabled={!inputText.trim() || sending}
             onPress={() => { void sendMessage(); }}
-            style={[styles.sendButton, !inputText.trim() && styles.sendDisabled]}
+            style={[
+              styles.sendButton,
+              (!inputText.trim() || sending) && styles.sendDisabled,
+            ]}
           >
-            <Text style={styles.sendText}>Send</Text>
+            {sending ? (
+              <ActivityIndicator color="#ffffff" size="small" />
+            ) : (
+              <Text style={styles.sendIcon}>➤</Text>
+            )}
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -282,26 +403,58 @@ export default function ChatThreadScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: palette.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-    gap: spacing.sm,
+    borderBottomColor: '#edf2f0',
+    gap: 12,
   },
   backButton: {
-    paddingVertical: 6,
-    paddingRight: 6,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#eaf4f0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  backText: {
+  backButtonText: {
+    fontSize: 20,
     color: palette.primary,
-    fontSize: 15,
     fontWeight: '700',
+  },
+  headerAvatar: {
+    position: 'relative',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#e6f1ec',
+    borderWidth: 1.5,
+    borderColor: '#c6dfd4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAvatarLetter: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 18,
+    fontWeight: '800',
+    color: palette.primary,
+  },
+  headerOnlineDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#10b981',
+    borderWidth: 2,
+    borderColor: '#ffffff',
   },
   headerInfo: {
     flex: 1,
@@ -309,123 +462,292 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: palette.heading,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     fontFamily: 'Plus Jakarta Sans',
   },
   headerSubtitle: {
-    color: palette.muted,
-    fontSize: 12,
+    color: '#055b49',
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: 'Plus Jakarta Sans',
   },
-  callIcon: {
-    backgroundColor: '#e6f1ec',
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  callIconBtn: {
+    backgroundColor: '#e6f7ef',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#c6e7d9',
   },
   callIconText: {
     fontSize: 16,
   },
-  statusPill: {
-    backgroundColor: '#e6f7ef',
-    paddingVertical: 6,
+  jobContextBanner: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f4faf7',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#dcece4',
   },
-  statusPillText: {
-    color: '#027a48',
-    fontSize: 12,
+  jobBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  jobBannerIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d2e5dd',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  jobBannerIcon: {
+    fontSize: 14,
+  },
+  jobBannerTitle: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
     fontWeight: '700',
+    color: palette.heading,
+  },
+  jobBannerSub: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    color: palette.primary,
+    fontWeight: '600',
+  },
+  jobBannerRight: {
+    alignItems: 'flex-end',
+    gap: 3,
+  },
+  jobBannerStatusPill: {
+    backgroundColor: '#e6f7ef',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 100,
+  },
+  jobBannerStatusText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#055b49',
+  },
+  jobBannerDetailsLink: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    color: palette.primary,
+    fontWeight: '700',
+  },
+  dateDivider: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  dateDividerText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8da49b',
+    backgroundColor: '#f0f5f2',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
     letterSpacing: 0.5,
   },
   centerContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
   },
   loadingText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 13,
     color: palette.muted,
-    fontSize: 14,
+    marginTop: 8,
   },
   messageList: {
-    padding: spacing.md,
-    gap: spacing.sm,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  selfRow: {
+    justifyContent: 'flex-end',
+  },
+  otherRow: {
+    justifyContent: 'flex-start',
+  },
+  bubbleAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#e6f1ec',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#c6dfd4',
+  },
+  bubbleAvatarLetter: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 12,
+    fontWeight: '800',
+    color: palette.primary,
   },
   messageBubble: {
-    maxWidth: '80%',
+    maxWidth: '78%',
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 16,
   },
   selfBubble: {
-    alignSelf: 'flex-end',
     backgroundColor: palette.primary,
     borderBottomRightRadius: 4,
+    shadowColor: palette.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
   },
   otherBubble: {
-    alignSelf: 'flex-start',
-    backgroundColor: palette.surface,
-    borderWidth: 1,
-    borderColor: palette.border,
+    backgroundColor: '#f7fbf9',
     borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: '#e2ece7',
   },
   messageText: {
-    fontSize: 15,
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 14,
     lineHeight: 20,
   },
   selfText: {
     color: '#ffffff',
   },
   otherText: {
+    color: '#1e2d27',
+  },
+  photoAttachmentCard: {
+    marginTop: 8,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#d8e8e0',
+  },
+  photoPlaceholderBox: {
+    height: 90,
+    backgroundColor: '#edf5f1',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  photoCameraIcon: {
+    fontSize: 24,
+  },
+  photoAttachmentLabel: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 10,
+    color: palette.muted,
+  },
+  photoCaptionText: {
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 11,
+    fontWeight: '700',
     color: palette.heading,
+    marginTop: 6,
+  },
+  bubbleFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 4,
+    gap: 2,
   },
   timeText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 10,
-    marginTop: 4,
   },
   selfTime: {
-    color: '#d4ece4',
-    alignSelf: 'flex-end',
+    color: '#c2dfd5',
   },
   otherTime: {
-    color: palette.muted,
-    alignSelf: 'flex-end',
+    color: '#8da49b',
+  },
+  readTicks: {
+    fontSize: 10,
+    color: '#95d5c0',
+    fontWeight: '700',
   },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.sm,
-    backgroundColor: palette.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: palette.border,
-    gap: spacing.sm,
+    borderTopColor: '#edf2f0',
+    gap: 8,
+  },
+  attachmentButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#f0f7f4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#d2e5dd',
+  },
+  attachmentIcon: {
+    fontSize: 18,
   },
   textInput: {
     flex: 1,
-    backgroundColor: palette.background,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 15,
+    minHeight: 42,
     maxHeight: 100,
+    backgroundColor: '#f8faf9',
+    borderRadius: 21,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+    borderWidth: 1.5,
+    borderColor: '#d2e2db',
+    fontFamily: 'Plus Jakarta Sans',
+    fontSize: 14,
     color: palette.heading,
   },
   sendButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: palette.primary,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: palette.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 2,
   },
   sendDisabled: {
-    opacity: 0.4,
+    opacity: 0.5,
   },
-  sendText: {
+  sendIcon: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
+    marginLeft: 2,
   },
 });
