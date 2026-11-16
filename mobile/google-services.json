@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "806595064859",
+    "project_id": "linkworks-c6a21",
+    "storage_bucket": "linkworks-c6a21.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:806595064859:android:c0a9cd9d2eb94d5c03b4be",
+        "android_client_info": {
+          "package_name": "com.linkworks.linkworks"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAB7d03glCiBmhO6qeMVKEv53dpJs6bSC4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
