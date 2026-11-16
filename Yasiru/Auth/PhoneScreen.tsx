@@ -672,6 +672,7 @@ const styles = StyleSheet.create({
     height: 18,
     marginLeft: 8,
     resizeMode: 'contain',
+    tintColor: '#ffffff',
   },
   messageBanner: {
     flexDirection: 'row',

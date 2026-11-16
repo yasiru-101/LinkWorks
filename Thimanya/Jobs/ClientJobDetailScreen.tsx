@@ -1043,6 +1043,7 @@ const styles = StyleSheet.create({
     height: 16,
     marginLeft: 6,
     resizeMode: 'contain',
+    tintColor: '#ffffff',
   },
   workerApplyBtn: {
     backgroundColor: '#eaf4f0',

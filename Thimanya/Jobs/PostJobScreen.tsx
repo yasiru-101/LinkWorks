@@ -312,12 +312,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 20,
     backgroundColor: '#f4f4f5',
     borderWidth: 1,
     borderColor: '#e4e4e7',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   selectedChip: {
     backgroundColor: palette.primary,
@@ -327,7 +329,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: palette.heading,
     fontWeight: '700',
-    paddingRight: 6,
+    paddingRight: 8,
+    flexShrink: 0,
   },
   selectedChipText: {
     color: '#ffffff',

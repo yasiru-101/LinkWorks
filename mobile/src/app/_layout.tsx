@@ -1,6 +1,6 @@
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import { ActivityIndicator, Platform, Pressable, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../../../Yasiru/Auth/AuthContext';
 import { ensureFirebaseApp } from '../../../Yasiru/Auth/firebase';
@@ -63,34 +63,17 @@ function ProtectedStack() {
   );
 }
 
-// Ensure Android text measurement does not clip the trailing letter of bold or custom font text
-if (Platform.OS === 'android') {
-  const TextComponent = Text as any;
-  if (TextComponent.defaultProps == null) {
-    TextComponent.defaultProps = {};
-  }
-  TextComponent.defaultProps.textBreakStrategy = 'simple';
-  TextComponent.defaultProps.includeFontPadding = false;
-}
-
-// Load static brand font variants once, then provide the native session to every route.
+// Load the original brand font once, then provide the native session to every route.
 export default function RootLayout() {
   // Eagerly ensure Firebase default app instance is ready before auth listeners attach
   ensureFirebaseApp();
 
   const colorScheme = useColorScheme();
-  const [fontsLoaded, fontError] = useFonts({
+  const [fontsLoaded] = useFonts({
     'Plus Jakarta Sans': require('../../assets/fonts/PlusJakartaSans.ttf'),
   });
 
-  // Display a clean white loading container while brand fonts initialize
-  if (!fontsLoaded && !fontError) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#ffffff', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#034e3f" accessibilityLabel="Loading LinkWorks" />
-      </View>
-    );
-  }
+  if (!fontsLoaded) return null;
 
   return (
     <SafeAreaProvider>

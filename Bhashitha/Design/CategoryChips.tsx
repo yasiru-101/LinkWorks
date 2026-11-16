@@ -96,6 +96,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     fontFamily: 'Plus Jakarta Sans',
+    paddingRight: 4,
   },
   selectedText: {
     color: '#ffffff',

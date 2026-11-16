@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     backgroundColor: '#ffffff',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1.5,
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     color: palette.heading,
     fontSize: 12,
     fontWeight: '700',
-    paddingRight: 6,
+    paddingRight: 8,
   },
   searchBarWrapper: {
     flexDirection: 'row',
