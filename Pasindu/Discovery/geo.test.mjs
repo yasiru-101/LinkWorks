@@ -1,3 +1,14 @@
+/**
+ * Geo Contract & Spatial Distance Unit Tests
+ * 
+ * Owner: Pasindu (Categories, location service, nearby worker discovery, search, public worker profiles, optional map)
+ * 
+ * Verifies mathematical precision for:
+ * 1. Base-32 Geohash generation against known canonical coordinates.
+ * 2. Haversine distance calculations between Sri Lankan cities.
+ * 3. Radial distance filtering and availability pruning for worker candidate lists.
+ */
+
 import assert from 'node:assert/strict';
 import { CITY_CENTERS, distanceKm, geohashForPoint, nearbyWorkers } from './geo.ts';
 

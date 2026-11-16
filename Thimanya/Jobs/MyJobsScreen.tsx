@@ -1,3 +1,15 @@
+/**
+ * LinkWorks Client My Jobs Management Screen
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * This screen displays all job postings created by the authenticated client:
+ * 1. Queries Cloud Firestore `jobs` where `clientId == user.uid`.
+ * 2. Segmented Status Filters: Filters by 'All', 'Open', 'Assigned', 'In Progress', 'Completed'.
+ * 3. Shows application count badge for open jobs indicating quotes received.
+ * 4. Provides quick navigation to job details or new job creation sheet.
+ */
+
 import { collection, getDocs, query, where } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';

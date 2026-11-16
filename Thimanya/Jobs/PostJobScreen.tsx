@@ -1,3 +1,16 @@
+/**
+ * LinkWorks Job Posting Screen for Clients
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * This screen enables clients to create and publish open job requests to the marketplace:
+ * 1. Trade Category: Selects category (Plumbing, Electrical, Carpentry, Masonry, etc.).
+ * 2. Details & Requirements: Title (5-120 chars) and detailed job description (10-3000 chars).
+ * 3. Budget Limits: Sets positive whole-LKR minimum and maximum budget expectations.
+ * 4. Location Tagging: Captures exact coordinates (lat/lng and geohash) using live GPS or Sri Lanka city center.
+ * 5. Firestore Persistence: Creates document in `jobs/{jobId}` with status 'open' and applicationCount 0.
+ */
+
 import { collection, doc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -6,6 +19,7 @@ import { Action, Card, Field, Page, Status } from '../../Bhashitha/Design/Primit
 import { palette, spacing } from '../../Bhashitha/Design/theme';
 import { CITY_CENTERS, findNearestSupportedCity, geohashForPoint, type SupportedCity } from '../../Pasindu/Discovery/geo';
 import { getCurrentDeviceLocation, isFusedLocationAvailable, requestLocationPermissions } from '../../Pasindu/Discovery/location-service';
+import { savePersistedLocation } from '../../Pasindu/Discovery/location-storage';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 import { validateOpenJob } from '../JobContracts/validation';
@@ -73,6 +87,8 @@ export default function PostJobScreen() {
 
       const match = findNearestSupportedCity(coords);
       setCity(match.city);
+      // Persist the confirmed physical device coordinates to flash storage for map centering
+      void savePersistedLocation({ lat: coords.lat, lng: coords.lng, city: match.city });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not detect device GPS.');
     } finally {

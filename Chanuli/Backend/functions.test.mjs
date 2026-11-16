@@ -1,3 +1,15 @@
+/**
+ * Cloud Functions Logic & Notification Payload Unit Tests
+ * 
+ * Owner: Chanuli (Job chat, notifications, Cloud Functions, trusted counters, backend security work)
+ * 
+ * Tests serverless computation helpers:
+ * 1. Worker rating averages and review counts across multiple reviews.
+ * 2. FCM push notification payload structure for job assignments.
+ * 3. FCM payload structure for newly submitted quotes.
+ * 4. Chat message notification formatting.
+ */
+
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';

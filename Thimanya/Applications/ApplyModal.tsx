@@ -1,3 +1,15 @@
+/**
+ * LinkWorks Worker Quote & Bid Submission Modal
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * This modal allows tradespeople to submit a formal price bid and pitch on an open client job:
+ * 1. Price Input: Validates positive integer whole-LKR quote (`quotedPriceLkr > 0`).
+ * 2. Message / Pitch: Enforces meaningful pitch message (minimum 10 characters).
+ * 3. Firestore Path: Writes directly to subcollection `jobs/{jobId}/applications/{workerId}` with status 'submitted'.
+ * 4. Safety: Complies with Firestore rules requiring worker ownership and open job status.
+ */
+
 import { doc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';

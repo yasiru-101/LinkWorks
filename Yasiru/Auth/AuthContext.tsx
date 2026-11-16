@@ -1,3 +1,18 @@
+/**
+ * LinkWorks Core Authentication & User Session Context
+ * 
+ * Owner: Yasiru (Phone authentication, onboarding, account and worker setup, role context, settings)
+ * 
+ * This module is the central authority for user identity, session lifecycle, and profile data in LinkWorks.
+ * Key responsibilities:
+ * 1. Subscribes to native Firebase Phone Auth state changes (`onAuthStateChanged`).
+ * 2. Fetches and maintains the user's private account record (`users/{uid}`) from Cloud Firestore.
+ * 3. Verifies whether the public worker profile (`workerProfiles/{uid}`) is provisioned when in worker mode.
+ * 4. Implements offline-first session caching using `expo-file-system` on mobile and `localStorage` on web,
+ *    allowing instant app hydration without a blank loading screen on cold starts.
+ * 5. Provides role-switching between 'client' and 'worker' modes, persisting preferences to Firestore.
+ */
+
 import { getAuth, onAuthStateChanged, signOut as firebaseSignOut } from '@react-native-firebase/auth';
 import { doc, getDocFromServer, getFirestore, serverTimestamp, setDoc, updateDoc } from '@react-native-firebase/firestore';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -8,13 +23,16 @@ import { CITY_CENTERS, geohashForPoint, type SupportedCity } from '../../Pasindu
 import { ensureFirebaseApp, getSafeAuth, getSafeFirestore } from './firebase';
 
 // File URI for persisting active user session cache on physical device disk.
+// Storing this in FileSystem.documentDirectory guarantees the session survives app updates and restarts.
 const SESSION_FILE_URI = FileSystem.documentDirectory
   ? `${FileSystem.documentDirectory}linkworks_session.json`
   : null;
 
 // Write session cache to device storage so closing and restarting the app provides instant profile hydration.
+// Handles both web localStorage and native iOS/Android file system asynchronously with error guarding.
 async function persistSessionToDisk(data: { user: AuthUser | null; profile: UserProfile | null; workerReady: boolean } | null) {
   try {
+    // Web environment: persist session object or clear key in browser localStorage
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined' && window.localStorage) {
         if (!data) window.localStorage.removeItem('linkworks_session');
@@ -22,14 +40,18 @@ async function persistSessionToDisk(data: { user: AuthUser | null; profile: User
       }
       return;
     }
+    // Native mobile environment: write JSON string directly to application sandboxed storage
     if (SESSION_FILE_URI) {
       if (!data) {
+        // Purge session file on sign-out
         await FileSystem.deleteAsync(SESSION_FILE_URI, { idempotent: true });
       } else {
+        // Atomically write updated session payload
         await FileSystem.writeAsStringAsync(SESSION_FILE_URI, JSON.stringify(data));
       }
     }
   } catch (err) {
+    // Non-fatal warning: if disk write fails (e.g. disk full), memory state remains intact
     console.warn('[LinkWorks Auth] Could not persist session cache to disk:', err);
   }
 }
@@ -56,11 +78,13 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-// Convert Firestore document data into the strongly-typed UserProfile structure.
+// Convert raw Firestore document data into the strongly-typed UserProfile structure.
+// Validates role flags and resolves active role fallback logic if state is ambiguous.
 function readProfile(data: Record<string, unknown>): UserProfile {
   const isClient = data.isClient === true;
   const isWorker = data.isWorker === true;
   const requestedRole = data.activeRole;
+  // Determine valid active role based on user's registered role permissions
   const activeRole: UserRole =
     requestedRole === 'worker' && isWorker ? 'worker' :
     requestedRole === 'client' && isClient ? 'client' :
@@ -84,9 +108,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [workerReady, setWorkerReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Tracks asynchronous request generations to prevent out-of-order race conditions
+  // (e.g. if a fast logout occurs while a slow profile read from Firestore is still resolving).
   const generation = useRef(0);
 
-  // Safety fallback: ensure initial loading resolves quickly even on slow or offline cellular networks
+  // Safety fallback: ensure initial loading resolves quickly even on slow or offline cellular networks.
+  // Guarantees the application never remains frozen on the splash screen for more than 2.5 seconds.
   useEffect(() => {
     const fallbackTimer = setTimeout(() => {
       setLoading(false);
@@ -95,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Fetch the current user's profile and worker status directly from Cloud Firestore.
+  // Performs a server-side read (`getDocFromServer`) to guarantee up-to-date role authorizations.
   const refreshProfile = useCallback(async () => {
     let currentUser = null;
     try {
@@ -114,15 +142,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const db = getSafeFirestore();
-      // Read users/{uid} directly from the Firestore server to ensure freshness
+      // Read users/{uid} directly from the Firestore server to ensure freshness and role truth
       const account = await getDocFromServer(doc(db, 'users', currentUser.uid));
       const nextProfile = account.exists() ? readProfile(account.data()) : null;
 
       // If registered as worker, verify if the public worker profile document is created
+      // (a worker profile requires both users/{uid} and workerProfiles/{uid} before entering worker feed)
       const worker = nextProfile?.isWorker
         ? await getDocFromServer(doc(db, 'workerProfiles', currentUser.uid))
         : null;
 
+      // Discard results if a newer auth or refresh action was dispatched while waiting for the network
       if (requestGeneration !== generation.current) return;
 
       const isWorkerReady = worker?.exists() === true;
@@ -136,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         workerReady: isWorkerReady,
       });
     } catch (cause) {
+      // Only set error if this request is still the active generation
       if (requestGeneration === generation.current) {
         setError(cause instanceof Error ? cause.message : String(cause));
       }
@@ -147,16 +178,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Listen to native Firebase Auth state changes and trigger profile lookup on sign in.
+  // Subscribes to the underlying Android/iOS FirebaseAuth instance and manages cleanup on unmount.
   useEffect(() => {
     let unsubscribe = () => {};
     try {
       unsubscribe = onAuthStateChanged(getSafeAuth(), (nextUser) => {
+        // Increment generation counter so prior pending network calls are safely discarded
         generation.current += 1;
         if (nextUser) {
+          // User authenticated via Phone Auth OTP
           setUser({ uid: nextUser.uid, phoneNumber: nextUser.phoneNumber });
           setError(null);
           void refreshProfile();
         } else {
+          // User signed out or session revoked
           setUser(null);
           setProfile(null);
           setWorkerReady(false);
@@ -175,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshProfile]);
 
   // Restore cached session on initial app launch to avoid UI flicker while network loads.
+  // Reads local flash memory or localStorage and immediately seeds `user`, `profile`, and `workerReady`.
   useEffect(() => {
     async function restoreSavedSession() {
       try {
@@ -207,6 +243,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Save or update account profile in Cloud Firestore, then refresh session state.
+  // Implements transactional two-tier writes:
+  // 1. `users/{uid}`: Stores private phone number, display name, registered roles, and active role.
+  // 2. `workerProfiles/{uid}`: (If worker) Stores public skills, geohash, base city coordinates, and day rate.
   const saveProfile = useCallback(async (input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'> & {
     skills?: string[];
     dayRateLkr?: number;

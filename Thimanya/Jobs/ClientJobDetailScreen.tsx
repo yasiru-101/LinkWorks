@@ -1,3 +1,17 @@
+/**
+ * LinkWorks Client Job Detail & Quote Review Screen
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * This screen provides the client's command center for an individual job:
+ * 1. Job Metadata: Displays trade category, budget, status badge (open, assigned, in_progress, completed, cancelled).
+ * 2. Received Quotes: Queries subcollection `jobs/{id}/applications` and hydrates worker profile ratings and stats.
+ * 3. Atomic Assignment Transaction: Uses `runTransaction` to accept a chosen bid, assign the worker, record acceptedPriceLkr,
+ *    and mark other pending quotes as rejected.
+ * 4. Job Lifecycle Controls: Start work (`in_progress`), mark completed, or cancel job.
+ * 5. Review & Rating: Triggers review modal upon job completion to submit worker star ratings and feedback.
+ */
+
 import {
   collection,
   deleteDoc,

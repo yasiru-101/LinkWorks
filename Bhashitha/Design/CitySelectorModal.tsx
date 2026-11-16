@@ -1,3 +1,14 @@
+/**
+ * LinkWorks City & GPS Search Center Modal
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Interactive bottom sheet / modal for choosing search location:
+ * 1. Displays supported Sri Lankan hub cities (Colombo, Gampaha, Kandy, Galle, Negombo, Moratuwa).
+ * 2. Highlights the currently active city.
+ * 3. Provides an explicit action button to enable or re-center on live device GPS coordinates.
+ */
+
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CITY_CENTERS, type SupportedCity } from '../../Pasindu/Discovery/geo';
 import { palette, spacing } from './theme';

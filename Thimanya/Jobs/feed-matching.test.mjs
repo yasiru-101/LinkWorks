@@ -1,3 +1,15 @@
+/**
+ * Worker Job Feed Matching Algorithm Unit Tests
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * Verifies the feed matching algorithm:
+ * 1. Filters by worker trade skill category (e.g. Plumbing only matches plumbing jobs).
+ * 2. Filters by open status (`status == 'open'`).
+ * 3. Restricts candidates within the worker's service radius.
+ * 4. Verifies ascending distance sorting (closest jobs appear first).
+ */
+
 import assert from 'node:assert/strict';
 import { CITY_CENTERS, distanceKm, geohashForPoint } from '../../Pasindu/Discovery/geo.ts';
 

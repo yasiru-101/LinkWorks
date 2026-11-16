@@ -1,3 +1,15 @@
+/**
+ * LinkWorks Client Review & Star Rating Modal
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Post-completion review dialog:
+ * 1. Star Rating: Interactive 1 to 5 star rating selector.
+ * 2. Feedback Comment: Text area for optional or mandatory client reviews.
+ * 3. Firestore Path: Writes directly to `reviews/{reviewId}` with `jobId`, `rateeId`, and `raterId`.
+ * 4. Aggregation: Triggers backend Cloud Functions to recalculate the worker's average rating.
+ */
+
 import { doc, getFirestore, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';

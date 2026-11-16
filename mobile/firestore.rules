@@ -1,3 +1,14 @@
+// LinkWorks Cloud Firestore Security Rules
+// Owner: Chanuli (Job chat, notifications, Cloud Functions, trusted counters, backend security work)
+// 
+// Security rules enforcing schema constraints, actor permissions, and collectionGroup queries:
+// 1. users/{userId}: Private user profile, readable/writable only by document owner.
+// 2. workerProfiles/{workerId}: Public worker directory, readable by signed-in users, writable by worker owner.
+// 3. jobs/{jobId}: Job posts, readable if open or participant; assignments and status strictly guarded.
+// 4. jobs/{jobId}/applications/{workerId}: Quote bids, readable by client and worker; collectionGroup indexed.
+// 5. chats/{chatId}: Job conversations, readable and writable only by verified participants.
+// 6. reviews/{reviewId}: Customer reviews, readable by signed-in users; writable only once per completed job.
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {

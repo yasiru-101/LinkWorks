@@ -1,3 +1,9 @@
+// LinkWorks Firebase Cloud Storage Security Rules
+// Owner: Chanuli (Job chat, notifications, Cloud Functions, trusted counters, backend security work)
+// 
+// Access rules for media uploads (job photos and portfolio images).
+// Currently gated until file paths, byte sizes, and content types are fully verified in emulation.
+
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {

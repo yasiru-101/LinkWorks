@@ -1,3 +1,11 @@
+/**
+ * LinkWorks Route Placeholder Screen
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Safe fallback component used during testing to verify route transitions before screens are mounted.
+ */
+
 import { StyleSheet, Text } from 'react-native';
 import { Card, Page } from '../Design/Primitives';
 import { palette } from '../Design/theme';

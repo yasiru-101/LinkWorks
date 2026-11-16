@@ -1,3 +1,15 @@
+/**
+ * LinkWorks Job Card Preview Component
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Renders an elevated job summary card:
+ * 1. Trade Category & Status: Displays color-coded status badge ('Open for Quotes', 'Assigned', 'In Progress', etc.).
+ * 2. Budget Display: Formats positive whole-LKR budget range (e.g. "Rs. 4,500 - 8,000").
+ * 3. Radial Distance: Shows calculated km distance from the user's active search center.
+ * 4. Location & Title: Displays city / address and prominent title.
+ */
+
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Job } from '../../mobile/src/types/domain';
 import { palette, spacing } from './theme';

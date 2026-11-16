@@ -1,3 +1,16 @@
+/**
+ * LinkWorks Real-Time Chat List & Conversations Screen
+ * 
+ * Owner: Chanuli (Job chat, notifications, Cloud Functions, trusted counters, backend security work)
+ * 
+ * This screen displays all conversations involving the authenticated user:
+ * 1. Queries Cloud Firestore `chats` where `participants array-contains user.uid`.
+ * 2. Hydrates conversation metadata: job title, other party display name, other party role (Client vs Worker).
+ * 3. Shows latest message snippet, relative timestamp, and unread indicator badge.
+ * 4. Provides search filter across contact names and job titles.
+ * 5. Pull-to-refresh to re-query active chat channels.
+ */
+
 import { collection, getDocs, query, where } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';

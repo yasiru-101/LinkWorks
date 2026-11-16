@@ -1,3 +1,15 @@
+/**
+ * Job Contract & Lifecycle Business Validation Rules
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * Enforces business domain rules for the LinkWorks marketplace:
+ * 1. Open Job Validation: String lengths, non-empty categories, positive integer budgets, and min <= max constraints.
+ * 2. State Machine Transitions: Validates allowed lifecycle moves (`open` -> `assigned` -> `in_progress` -> `completed` / `cancelled`)
+ *    and verifies actor authority (Client vs Assigned Worker).
+ * 3. Quote Validation: Requires positive whole-LKR pricing and minimum 10-character pitch messages.
+ */
+
 import type { JobStatus } from '../../mobile/src/types/domain';
 
 // The client creates a priced job with a title, category, and useful description.

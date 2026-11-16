@@ -1,3 +1,17 @@
+/**
+ * LinkWorks Client Home & Worker Discovery Screen
+ * 
+ * Owner: Pasindu (Categories, location service, nearby worker discovery, search, public worker profiles, optional map)
+ * 
+ * This screen is the primary landing experience for clients seeking tradespeople:
+ * 1. Live Discovery: Queries Cloud Firestore `workerProfiles` where `isAvailable == true`.
+ * 2. Spatial Filtering: Calculates Haversine distance from search center (GPS or chosen city) and filters by radius.
+ * 3. Trade Category Chips: Filters by specific trade skills (Plumbing, Electrical, Carpentry, Masonry, etc.).
+ * 4. Free-Text Search: Filters workers by name, skills, and bio description.
+ * 5. View Switcher: Toggles between distance-sorted list view and interactive Google Static Map pin view.
+ * 6. Quick Job Posting: Callout banner directing users to post multi-quote job requests.
+ */
+
 import { collection, getDocs, query, where } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';

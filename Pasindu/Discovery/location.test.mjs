@@ -1,3 +1,14 @@
+/**
+ * Location & Coverage Boundary Test Suite
+ * 
+ * Owner: Pasindu (Categories, location service, nearby worker discovery, search, public worker profiles, optional map)
+ * 
+ * Tests the geographic coverage algorithms and city mapping:
+ * 1. Verifies exact city center points map to themselves with 0km error.
+ * 2. Verifies suburban coordinates map accurately to their closest hub (Dehiwala -> Colombo, Ratmalana -> Moratuwa).
+ * 3. Validates out-of-coverage boundary conditions for distant cities (e.g. Jaffna, Nuwara Eliya).
+ */
+
 import assert from 'node:assert/strict';
 import { CITY_CENTERS, distanceKm, findNearestSupportedCity, MAX_SERVICE_DISTANCE_KM } from './geo.ts';
 

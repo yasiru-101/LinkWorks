@@ -1,3 +1,14 @@
+/**
+ * LinkWorks Trade Category Filter Chips
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Renders horizontal scrolling category chips with trade icons:
+ * 1. Supports major Sri Lankan trades: Carpentry, Plumbing, Electrical, Masonry, Painting, Gardening, AC Repair, Roofing.
+ * 2. Provides active and inactive visual states conforming to the LinkWorks brand palette.
+ * 3. Notifies parent components of category selection changes via `onSelect`.
+ */
+
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { palette, spacing } from './theme';
 

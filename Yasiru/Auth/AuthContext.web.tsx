@@ -1,3 +1,14 @@
+/**
+ * Web Mock Authentication & Session Context
+ * 
+ * Owner: Yasiru (Phone authentication, onboarding, account and worker setup, role context, settings)
+ * 
+ * This module provides a browser-compatible mock implementation of `AuthContext` for Expo Web development
+ * and local browser previews. Because native `@react-native-firebase/auth` and `@react-native-firebase/firestore`
+ * modules require native Android / iOS binaries, this web stub allows UI screens, design components, and
+ * tab navigation to run smoothly in standard web browsers without native crashes.
+ */
+
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { UserProfile, UserRole } from '../../mobile/src/types/domain';
 
@@ -31,12 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Refresh profile from backend session.
+  // Refresh profile from backend session (mock stub for web previews).
   async function refreshProfile() {
     // In web mode, session state is managed via React state and local storage
   }
 
   // Save the user profile and worker profile in memory for web preview and testing.
+  // Emulates the dual-role client/worker behavior of the native Android app.
   async function saveProfile(input: Pick<UserProfile, 'name' | 'city' | 'isClient' | 'isWorker'> & {
     skills?: string[];
     dayRateLkr?: number;
@@ -65,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Toggle active role between Client and Worker tabs.
+  // Toggle active role between Client and Worker tabs in web environment.
   async function selectRole(role: UserRole) {
     setProfile((prev) => (prev ? { ...prev, activeRole: role } : null));
   }

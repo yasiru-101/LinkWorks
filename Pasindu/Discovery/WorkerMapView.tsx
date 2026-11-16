@@ -1,3 +1,16 @@
+/**
+ * LinkWorks Worker Map View & Static Tile Projection Canvas
+ * 
+ * Owner: Pasindu (Categories, location service, nearby worker discovery, search, public worker profiles, optional map)
+ * 
+ * This component provides an interactive map view displaying worker locations:
+ * 1. Google Static Maps API: Renders high-resolution map tiles centered on the active search center.
+ * 2. Mercator Projection: Calculates pixel X/Y coordinates from GPS latitude/longitude using `projectLatLngToPixels`.
+ * 3. Interactive Pins: Displays custom pins for tradespeople with category icons and star ratings.
+ * 4. Zoom & Layer Controls: Supports zoom levels 10-16 and roadmap vs satellite view toggles.
+ * 5. Turn-by-Turn Navigation: Opens native Google Maps navigation directions on tap.
+ */
+
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -28,7 +41,7 @@ export interface WorkerMapViewProps {
   radiusKm: number;
   isGpsActive?: boolean;
   isLocating?: boolean;
-  onRequestGps?: () => Promise<boolean>;
+  onRequestGps?: (forceRefresh?: boolean) => Promise<boolean>;
   onSelectWorker?: (worker: WorkerWithDistance) => void;
 }
 
@@ -135,7 +148,7 @@ export default function WorkerMapView({
         <Pressable
           accessibilityRole="button"
           onPress={() => {
-            if (onRequestGps) void onRequestGps();
+            if (onRequestGps) void onRequestGps(true);
           }}
           disabled={isLocating}
           style={[styles.gpsBadge, isGpsActive && styles.gpsBadgeActive]}
@@ -149,7 +162,7 @@ export default function WorkerMapView({
             {isLocating
               ? 'Locating…'
               : isGpsActive
-              ? `GPS (${userCoords.lat.toFixed(2)}, ${userCoords.lng.toFixed(2)})`
+              ? `Live GPS`
               : '📍 Use Live GPS'}
           </Text>
         </Pressable>
@@ -409,6 +422,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e4e4e7',
+    flexShrink: 0,
   },
   gpsBadgeActive: {
     backgroundColor: '#ecfdf5',

@@ -1,3 +1,16 @@
+/**
+ * LinkWorks Public Worker Profile & Reviews Screen
+ * 
+ * Owner: Pasindu (Categories, location service, nearby worker discovery, search, public worker profiles, optional map)
+ * 
+ * This screen displays full public profile details for an individual tradesperson:
+ * 1. Verified Credentials: Full name, base city, service radius, years of experience, and daily whole-LKR rates.
+ * 2. Trade Specialties: Skill tags and professional bio highlighting tools and experience.
+ * 3. Customer Reviews & Ratings: Queries Cloud Firestore `reviews` subcollection for star ratings and feedback.
+ * 4. Direct Messaging: Creates or opens a direct `chats/{chatId}` document with participant metadata.
+ * 5. Moderation: Provides an in-app report modal for inappropriate or non-compliant worker profiles.
+ */
+
 import { collection, doc, getDocFromServer, getDocs, query, serverTimestamp, setDoc, where } from '@react-native-firebase/firestore';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';

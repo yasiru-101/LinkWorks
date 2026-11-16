@@ -1,6 +1,20 @@
+/**
+ * Search Center & GPS State Management Provider
+ * 
+ * Owner: Pasindu (Categories, location service, nearby worker discovery, search, public worker profiles, optional map)
+ * 
+ * This module provides the central spatial state context across all LinkWorks discovery feeds and job listings:
+ * 1. Coordinates: Holds active search latitude and longitude (either live GPS fix or manual city center).
+ * 2. Search Radius: Configures user-selected radial filter (5km to 50km).
+ * 3. Hardware Fused Location Client: Safely requests Android foreground location permissions and fetches coordinates.
+ * 4. Coverage Boundary Evaluation: Checks if device is outside LinkWorks' 45km coverage radius and flags out-of-coverage notices.
+ * 5. City Override: Allows immediate manual city selection without requiring GPS hardware.
+ */
+
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { CITY_CENTERS, findNearestSupportedCity, type SupportedCity } from './geo';
-import { getCurrentDeviceLocation, isFusedLocationAvailable, requestLocationPermissions } from './location-service';
+import { getCurrentDeviceLocation, getLastKnownDeviceLocation, isFusedLocationAvailable, requestLocationPermissions } from './location-service';
+import { loadPersistedLocation, savePersistedLocation } from './location-storage';
 
 export type SearchCenterState = {
   city: SupportedCity;
@@ -41,7 +55,7 @@ export function SearchCenterProvider({
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
   const [locationError, setLocationError] = useState<string | null>(null);
 
-  // Request device coordinates from the native Fused Location Provider client.
+  // Request device coordinates using two-stage lookup (0ms cache hit + fresh satellite fix).
   const requestDeviceLocation = useCallback(async (forceRefresh = false): Promise<boolean> => {
     try {
       setIsLocating(true);
@@ -66,30 +80,60 @@ export function SearchCenterProvider({
         return false;
       }
 
-      // Query Android Fused Location Provider with balanced power/accuracy
-      const location = await getCurrentDeviceLocation(false);
-      if (!location) {
-        setIsGpsActive(false);
-        setLocationError('Could not obtain GPS fix. Showing city center.');
-        return false;
+      let hadCacheHit = false;
+
+      // Stage A (0ms Cache Hit): Instantly read last known hardware location so map doesn't flash Colombo
+      const cached = await getLastKnownDeviceLocation();
+      if (cached) {
+        hadCacheHit = true;
+        const cachedCoords = { lat: cached.latitude, lng: cached.longitude };
+        setLat(cachedCoords.lat);
+        setLng(cachedCoords.lng);
+        setIsGpsActive(true);
+
+        const nearestMatch = findNearestSupportedCity(cachedCoords);
+        setCityState(nearestMatch.city);
+        setCoverageDistanceKm(nearestMatch.distanceKm);
+        setIsOutOfCoverage(!nearestMatch.inCoverage);
+
+        void savePersistedLocation({
+          lat: cachedCoords.lat,
+          lng: cachedCoords.lng,
+          city: nearestMatch.city,
+        });
       }
 
-      const coords = {
-        lat: location.latitude,
-        lng: location.longitude,
-      };
+      // Stage B (High Accuracy Fix): Query Android Fused Location Provider with 8s timeout protection
+      const fresh = await getCurrentDeviceLocation(true);
+      if (fresh) {
+        const freshCoords = { lat: fresh.latitude, lng: fresh.longitude };
+        setLat(freshCoords.lat);
+        setLng(freshCoords.lng);
+        setIsGpsActive(true);
 
-      setLat(coords.lat);
-      setLng(coords.lng);
-      setIsGpsActive(true);
+        const freshMatch = findNearestSupportedCity(freshCoords);
+        setCityState(freshMatch.city);
+        setCoverageDistanceKm(freshMatch.distanceKm);
+        setIsOutOfCoverage(!freshMatch.inCoverage);
 
-      // Identify nearest Sri Lankan trade hub and check coverage
-      const nearestMatch = findNearestSupportedCity(coords);
-      setCityState(nearestMatch.city);
-      setCoverageDistanceKm(nearestMatch.distanceKm);
-      setIsOutOfCoverage(!nearestMatch.inCoverage);
+        void savePersistedLocation({
+          lat: freshCoords.lat,
+          lng: freshCoords.lng,
+          city: freshMatch.city,
+        });
 
-      return true;
+        return true;
+      }
+
+      // If fresh satellites timed out indoors but we got a valid cache hit, consider it successful
+      if (hadCacheHit) {
+        return true;
+      }
+
+      // If no GPS fix could be acquired and we had no cache
+      setIsGpsActive(false);
+      setLocationError('Could not obtain GPS fix. Showing city center.');
+      return false;
     } catch (err) {
       setIsGpsActive(false);
       setLocationError(err instanceof Error ? err.message : 'Could not obtain GPS fix');
@@ -99,9 +143,35 @@ export function SearchCenterProvider({
     }
   }, []);
 
-  // Request foreground location on initial mount per Option A
+  // On mount, immediately restore persisted coordinates from flash disk, then fetch live hardware fix
   useEffect(() => {
-    void requestDeviceLocation();
+    let isMounted = true;
+
+    async function initializeLocation() {
+      // Step 1: Read saved coordinates from disk immediately (0ms)
+      const persisted = await loadPersistedLocation();
+      if (isMounted && persisted) {
+        setLat(persisted.lat);
+        setLng(persisted.lng);
+        setCityState(persisted.city);
+        setIsGpsActive(true);
+
+        const match = findNearestSupportedCity({ lat: persisted.lat, lng: persisted.lng });
+        setCoverageDistanceKm(match.distanceKm);
+        setIsOutOfCoverage(!match.inCoverage);
+      }
+
+      // Step 2: Acquire fresh hardware GPS fix in the background
+      if (isMounted) {
+        void requestDeviceLocation(true);
+      }
+    }
+
+    void initializeLocation();
+
+    return () => {
+      isMounted = false;
+    };
   }, [requestDeviceLocation]);
 
   // When user manually selects a city, switch coordinates to that city's center

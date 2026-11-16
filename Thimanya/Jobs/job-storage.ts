@@ -1,3 +1,14 @@
+/**
+ * Local Offline Job & Application Flash Storage
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * Provides an offline fallback storage layer using `expo-file-system` on mobile and `localStorage` on web:
+ * 1. Persists locally posted jobs to `linkworks_jobs.json` to prevent data loss in offline environments.
+ * 2. Persists submitted quotes and bid details to `linkworks_applications.json`.
+ * 3. Bridges memory cache with disk flash storage and supports bidirectional sync with Cloud Firestore.
+ */
+
 import { deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, where } from '@react-native-firebase/firestore';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';

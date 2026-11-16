@@ -1,3 +1,16 @@
+/**
+ * Geolocation & Spatial Indexing Utilities
+ * 
+ * Owner: Pasindu (Categories, location service, nearby worker discovery, search, public worker profiles, optional map)
+ * 
+ * This module provides core geographic algorithms for the LinkWorks marketplace:
+ * 1. Base-32 Geohash Encoding: Encodes latitude/longitude coordinates into alphanumeric strings for Firestore indexing.
+ * 2. Haversine Distance Calculation: Computes high-precision distances (in km) between user GPS and worker base coords.
+ * 3. Supported Trade Hubs: Canonical GPS coordinates for major Sri Lankan cities (Colombo, Kandy, Galle, Gampaha, etc.).
+ * 4. Nearest Hub Discovery: Matches device coordinates against supported cities and validates service coverage.
+ * 5. Worker Sorting: Filters and sorts worker candidate arrays by radial distance.
+ */
+
 // These city centers provide an explicit fallback when foreground location is unavailable.
 export const CITY_CENTERS = {
   Colombo: { lat: 6.9271, lng: 79.8612 },

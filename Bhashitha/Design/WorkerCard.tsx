@@ -1,3 +1,15 @@
+/**
+ * LinkWorks Verified Tradesperson Card Preview Component
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Renders a high-fidelity worker card for marketplace discovery:
+ * 1. Tradesperson Identity: Displays avatar letter, verified badge, full name, and primary trade skill.
+ * 2. Ratings & Reviews: Shows average star rating badge (e.g. "★ 4.9") and completed jobs count.
+ * 3. Daily Rate: Highlights transparent whole-LKR daily rate (e.g. "Rs. 4,500 / day").
+ * 4. Distance & Coverage: Shows calculated radial distance from user search center.
+ */
+
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { WorkerProfile } from '../../mobile/src/types/domain';
 import { palette, spacing } from './theme';

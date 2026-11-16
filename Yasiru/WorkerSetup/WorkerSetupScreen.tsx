@@ -1,3 +1,16 @@
+/**
+ * LinkWorks Worker Profile Setup & Trade Configuration Screen
+ * 
+ * Owner: Yasiru (Phone authentication, onboarding, account and worker setup, role context, settings)
+ * 
+ * This screen configures the public profile for tradespeople on LinkWorks:
+ * 1. Base City & Coverage Radius: Selects city center and service boundary (5km to 45km) for discovery calculations.
+ * 2. Trade Specialties: Selects preset trade chips (Carpentry, Plumbing, etc.) or types custom skills.
+ * 3. Daily Rate & Experience: Sets transparent whole-LKR rates and verified trade experience.
+ * 4. Bio & Availability: Configures description of tools/services and toggles search availability on/off.
+ * 5. Cloud Firestore Persistence: Writes to `workerProfiles/{uid}` with geohash indexing and server timestamps.
+ */
+
 import { doc, getDocFromServer, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';

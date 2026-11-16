@@ -1,3 +1,15 @@
+/**
+ * Job & Quote Offline Storage Unit Tests
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * Verifies local offline disk caching operations:
+ * 1. Initial state verification.
+ * 2. Saving and updating locally posted jobs.
+ * 3. Quote submission tracking per job.
+ * 4. Deleting and updating cached records.
+ */
+
 import assert from 'node:assert';
 
 // Simulated storage persistence logic test matching Thimanya/Jobs/job-storage.ts

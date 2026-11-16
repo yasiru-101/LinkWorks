@@ -1,3 +1,15 @@
+/**
+ * Job Lifecycle & State Machine Transition Tests
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * Verifies allowed and forbidden job transitions:
+ * 1. Client authority to cancel or assign open jobs.
+ * 2. Assigned worker authority to begin work (`in_progress`).
+ * 3. Client exclusive authority to confirm completion.
+ * 4. Rejection of illegal state jumps (e.g. `open` directly to `completed`).
+ */
+
 import assert from 'node:assert/strict';
 import { canTransitionJob, validateQuote } from './validation.ts';
 

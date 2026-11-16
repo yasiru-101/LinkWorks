@@ -1,3 +1,13 @@
+/**
+ * LinkWorks Design Tokens & Theme Palette
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Design system tokens adhering to the Figma mockups:
+ * 1. Palette: Brand emerald green (`#034e3f`), background tint (`#f5faf8`), text headings, muted body, and alert reds.
+ * 2. Spacing Scale: Standard 4pt grid increments (`xs: 6`, `sm: 10`, `md: 16`, `lg: 24`, `xl: 32`).
+ */
+
 // Shared tokens keep new screens aligned with the LinkWorks welcome design.
 export const palette = {
   background: '#f5faf8',

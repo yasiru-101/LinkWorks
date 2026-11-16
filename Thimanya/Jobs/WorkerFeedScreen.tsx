@@ -1,3 +1,16 @@
+/**
+ * LinkWorks Nearby Job Feed for Tradespeople
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * This screen is the primary dashboard for workers in LinkWorks:
+ * 1. Queries live open jobs (`status == 'open'`) from Cloud Firestore.
+ * 2. Filters jobs by the worker's verified skills (e.g. Plumbing, Carpentry) and service coverage radius.
+ * 3. Calculates Haversine distance from search center (GPS fix or selected Sri Lankan city).
+ * 4. Sorts jobs in ascending order of distance so nearby opportunities appear first.
+ * 5. Supports pull-to-refresh to re-query GPS coordinates and refresh available jobs.
+ */
+
 import { collection, doc, getDocFromServer, getDocs, query, where } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';

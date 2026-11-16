@@ -1,3 +1,16 @@
+/**
+ * LinkWorks Design System Reusable UI Primitives
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Foundational reusable UI components adhering to the LinkWorks Figma theme:
+ * 1. `Page`: SafeAreaView container with standard vertical scrolling and keyboard avoidance.
+ * 2. `Card`: Clean bordered surface for grouping related form fields and data sections.
+ * 3. `Field`: Accessible labeled TextInput with validation error messaging.
+ * 4. `Action`: High-contrast button with loading spinner and primary/secondary style variants.
+ * 5. `Status`: Live accessible status text for non-intrusive error and notification banners.
+ */
+
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

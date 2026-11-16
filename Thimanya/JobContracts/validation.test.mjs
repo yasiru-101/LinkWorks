@@ -1,3 +1,14 @@
+/**
+ * Job Contract Validation Unit Tests
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * Verifies domain validation functions:
+ * 1. Budget bounds validation (minimum budget cannot exceed maximum budget).
+ * 2. Positive integer validation for worker quotes.
+ * 3. Authority checks on state transitions.
+ */
+
 import assert from 'node:assert/strict';
 import { canTransitionJob, validateOpenJob, validateQuote } from './validation.ts';
 

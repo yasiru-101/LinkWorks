@@ -1,3 +1,16 @@
+/**
+ * LinkWorks User Account & Settings Screen
+ * 
+ * Owner: Yasiru (Phone authentication, onboarding, account and worker setup, role context, settings)
+ * 
+ * This screen manages account preferences, role toggles, and worker configurations:
+ * 1. Displays verified identity (name, verified mobile phone, hub city, avatar).
+ * 2. Provides active mode switcher allowing dual-role members to seamlessly toggle between
+ *    Client mode (job posting and worker discovery) and Worker mode (viewing open bids and quotes).
+ * 3. Shows worker profile settings when in worker mode (day rates, skills, service radius).
+ * 4. Provides legal disclosures, terms of service link, and a safe confirmation-prompted sign-out action.
+ */
+
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';

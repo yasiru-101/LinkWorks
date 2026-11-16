@@ -1,3 +1,15 @@
+/**
+ * LinkWorks Role-Aware Bottom Tab Navigation
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Provides bottom navigation adapting dynamically to the user's active role:
+ * 1. Client Tabs: 'Discover' (Worker search), 'My Jobs' (Posted jobs), 'Messages' (Chat), 'Account' (Settings).
+ * 2. Worker Tabs: 'Job Feed' (Nearby bids), 'My Quotes' (Submitted applications), 'Messages' (Chat), 'Account' (Settings).
+ * 3. Dynamic Safe-Area Elevation: Dynamically calculates bottom insets ensuring tab items are never obscured
+ *    by the Android 3-button hardware system bar or iOS home bar.
+ */
+
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

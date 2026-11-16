@@ -1,3 +1,16 @@
+/**
+ * LinkWorks Real-Time Chat Messaging Thread Screen
+ * 
+ * Owner: Chanuli (Job chat, notifications, Cloud Functions, trusted counters, backend security work)
+ * 
+ * This screen provides active messaging between client and worker:
+ * 1. Live Subcollection Listener: Subscribes to `chats/{id}/messages` using `onSnapshot` ordered by `createdAt asc`.
+ * 2. Message Dispatch: Writes new message documents with `senderId`, `text`, and `serverTimestamp()`.
+ * 3. Chat Header Synchronizer: Atomically updates parent chat document with `lastMessage`, `lastAt`, and unread counters.
+ * 4. Call Shortcut: Directly triggers native telephone dialer (`tel:${otherPhone}`) for rapid communication.
+ * 5. Keyboard Handling: Smooth `KeyboardAvoidingView` layout adjustment on Android and iOS.
+ */
+
 import {
   addDoc,
   collection,

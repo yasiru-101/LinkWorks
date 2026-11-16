@@ -1,3 +1,17 @@
+/**
+ * LinkWorks Backend Cloud Functions
+ * 
+ * Owner: Chanuli (Job chat, notifications, Cloud Functions, trusted counters, backend security work)
+ * 
+ * Serverless triggers running on Google Cloud Functions v2:
+ * 1. `onReviewCreated`: Triggers when a new customer review is posted. Aggregates star ratings, calculates average,
+ *    and updates worker profile stats (`ratingAvg`, `ratingCount`).
+ * 2. `onJobUpdated`: Triggers when job status changes. Emits push notifications via Firebase Cloud Messaging (FCM)
+ *    when quotes are accepted or when job assignment begins.
+ * 3. `onMessageCreated`: Triggers when a chat message is sent. Updates unread message counters and delivers FCM alert
+ *    to the recipient's registered device token.
+ */
+
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');

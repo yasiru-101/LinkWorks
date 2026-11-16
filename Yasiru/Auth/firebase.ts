@@ -1,3 +1,17 @@
+/**
+ * Firebase Client Configuration & Safe Singleton Accessors
+ * 
+ * Owner: Yasiru (Phone authentication, onboarding, account and worker setup)
+ * 
+ * This module configures and initializes Google Firebase for the LinkWorks mobile application.
+ * It connects the React Native app to Cloud Firestore, Firebase Authentication, and Google Cloud
+ * Identity Platform using credentials configured in `google-services.json`.
+ * 
+ * It also exports guarded helper functions (`getSafeFirestore`, `getSafeAuth`) that guarantee
+ * the default Firebase App instance is initialized before any read/write operations execute,
+ * preventing race condition crashes during early app startup.
+ */
+
 import { getApp, getApps, initializeApp } from '@react-native-firebase/app';
 import { getAuth } from '@react-native-firebase/auth';
 import { getFirestore } from '@react-native-firebase/firestore';
@@ -20,15 +34,17 @@ let initPromise: Promise<any> | null = null;
 // If the native build didn't auto-initialize from google-services.json, this manually creates the app
 // so that getFirestore() and getAuth() never fail with 'No Firebase App [DEFAULT] has been created'.
 export function ensureFirebaseApp() {
+  // Check if an existing initialized app already exists in the native registry
   try {
     const existing = getApps();
     if (existing.length > 0) {
       return getApp();
     }
   } catch {
-    // Native registry check fallback
+    // Native registry check fallback when running in non-native or test environments
   }
 
+  // If no initialization is currently in flight, dispatch initializeApp with project credentials
   if (!initPromise) {
     try {
       initPromise = initializeApp(FIREBASE_CONFIG)
@@ -37,29 +53,31 @@ export function ensureFirebaseApp() {
           return app;
         })
         .catch((err) => {
-          // If native app was created concurrently or already exists, return existing app
+          // If native app was created concurrently by another thread, safely return that app
           try {
             if (getApps().length > 0) {
               return getApp();
             }
           } catch {
-            // Ignore
+            // Ignore native lookup errors during race condition resolution
           }
           console.warn('[LinkWorks] Firebase initializeApp notice:', err?.message || err);
           return null;
         });
     } catch (err: any) {
+      // Synchronous catch if initializeApp fails immediately
       try {
         if (getApps().length > 0) {
           return getApp();
         }
       } catch {
-        // Ignore
+        // Ignore native lookup errors
       }
       console.warn('[LinkWorks] Sync initializeApp warning:', err?.message || err);
     }
   }
 
+  // Attempt to return the default app instance if already registered
   try {
     return getApp();
   } catch {
@@ -83,5 +101,5 @@ export function getSafeAuth() {
 try {
   ensureFirebaseApp();
 } catch (e) {
-  // Graceful catch for test environments
+  // Graceful catch for test environments or build scripts where native Firebase bindings are absent
 }

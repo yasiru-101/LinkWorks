@@ -1,3 +1,16 @@
+/**
+ * LinkWorks Phone Authentication & OTP Verification Screen
+ * 
+ * Owner: Yasiru (Phone authentication, onboarding, account and worker setup, role context, settings)
+ * 
+ * This screen handles telephone onboarding and sign-in for the LinkWorks mobile application:
+ * 1. Accepts Sri Lankan phone numbers formatted as local (077 123 4567) or international (+94 77 123 4567).
+ * 2. Triggers Google Play Integrity and native SMS verification via `signInWithPhoneNumber`.
+ * 3. Renders a high-fidelity 6-box visual OTP input with cursor pulsation and auto-advance.
+ * 4. Automatically submits verification once all 6 digits are typed.
+ * 5. Provides a 60-second countdown cooldown for SMS resends.
+ */
+
 import { signInWithPhoneNumber } from '@react-native-firebase/auth';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';

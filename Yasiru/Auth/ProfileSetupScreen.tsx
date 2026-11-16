@@ -1,3 +1,20 @@
+/**
+ * LinkWorks User Onboarding & Profile Setup Screen
+ * 
+ * Owner: Yasiru (Phone authentication, onboarding, account and worker setup, role context, settings)
+ * 
+ * This screen guides new users immediately after phone verification through establishing their account:
+ * 1. Collects basic identity: Full Name and primary Sri Lanka hub city (Colombo, Kandy, Galle, etc.).
+ * 2. Allows flexible role selection:
+ *    - 'client': Only post jobs and hire workers.
+ *    - 'worker': Offer trade skills, set rates, and discover client jobs.
+ *    - 'both': Dual-role participation with on-demand switching in settings.
+ * 3. For workers, collects trade categories (Plumbing, Electrical, Carpentry, etc.), custom specialties,
+ *    daily rate in LKR, years of trade experience, service radius in kilometers, and bio.
+ * 4. Transactionally creates `users/{uid}` in Cloud Firestore and, if a worker, establishes `workerProfiles/{uid}`
+ *    with geographic base coordinates and geohash encoding for discovery.
+ */
+
 import { doc, getDocFromServer, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useState } from 'react';

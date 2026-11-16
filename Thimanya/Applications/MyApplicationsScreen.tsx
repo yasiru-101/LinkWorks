@@ -1,3 +1,15 @@
+/**
+ * LinkWorks Worker My Applications & Quotes Screen
+ * 
+ * Owner: Thimanya (Nearby job feed, job posting, applications, quotes, assignment, job lifecycle)
+ * 
+ * This screen provides tracking for quotes submitted by the authenticated worker:
+ * 1. CollectionGroup Query: Queries across all `applications` subcollections matching `workerId == user.uid`.
+ * 2. Parent Job Metadata: Concurrently resolves parent job titles, trade categories, and locations.
+ * 3. Bid Status Badges: Visual state tags for 'Quote Submitted', 'Hired / Accepted', 'Not Selected', and 'Withdrawn'.
+ * 4. Quote Withdrawal: Allows workers to retract active quotes prior to client assignment.
+ */
+
 import { collectionGroup, getDoc, getDocs, query, where, doc, updateDoc, serverTimestamp } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';

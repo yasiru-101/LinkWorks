@@ -1,3 +1,16 @@
+/**
+ * Firestore Security Rules Unit Test Suite
+ * 
+ * Owner: Chanuli (Job chat, notifications, Cloud Functions, trusted counters, backend security work)
+ * 
+ * Verifies security boundary enforcement using `@firebase/rules-unit-testing`:
+ * 1. Owner isolation for private accounts (`users/{uid}`).
+ * 2. Public worker directory read permissions and write restrictions.
+ * 3. Client job listing and status mutation guards.
+ * 4. CollectionGroup security checks for worker quote queries.
+ * 5. Two-party chat access control.
+ */
+
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
