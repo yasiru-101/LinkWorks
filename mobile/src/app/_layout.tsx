@@ -55,7 +55,9 @@ function ProtectedStack() {
       <Stack.Screen name="terms" />
 
       <Stack.Protected guard={!user}>
-        <Stack.Screen name="phone" />
+        {/* Explicitly suppress the native header on the phone OTP screen —
+            PhoneScreen renders its own back button in the top bar. */}
+        <Stack.Screen name="phone" options={{ headerShown: false }} />
       </Stack.Protected>
 
       <Stack.Protected guard={!!user && !profile}>

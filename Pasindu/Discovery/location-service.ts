@@ -10,6 +10,8 @@
  * continues to function smoothly without crashing.
  */
 
+import { Linking } from 'react-native';
+
 export interface LocationCoords {
   latitude: number;
   longitude: number;
@@ -17,6 +19,16 @@ export interface LocationCoords {
 
 export interface LocationPermissionResult {
   status: 'granted' | 'denied' | 'undetermined';
+}
+
+export interface ReadableAddress {
+  city?: string | null;
+  district?: string | null;
+  street?: string | null;
+  subregion?: string | null;
+  region?: string | null;
+  name?: string | null;
+  formattedAddress: string;
 }
 
 // Dynamically reference expo-location native module inside try-catch to avoid static import crashes
@@ -41,6 +53,37 @@ try {
 // Check whether native Fused Location Provider hardware module is available in this APK
 export function isFusedLocationAvailable(): boolean {
   return isNativeModulePresent && expoLocationModule !== null;
+}
+
+// Check whether system-level location services (GPS hardware switch) are enabled on the device.
+// If disabled on Android, triggers Google Play Services' standard "Turn on device location" dialog
+// so the user can enable GPS with a single tap without leaving the application.
+export async function ensureLocationServicesEnabled(): Promise<boolean> {
+  if (!expoLocationModule || typeof expoLocationModule.hasServicesEnabledAsync !== 'function') {
+    return true; // Fallback to true if cannot check to allow downstream permission checks to handle it
+  }
+  try {
+    const enabled = await expoLocationModule.hasServicesEnabledAsync();
+    if (enabled) {
+      return true;
+    }
+    // Location services are disabled at the system/hardware level.
+    // On Android, enableNetworkProviderAsync prompts Google Play Services LocationSettings dialog.
+    if (typeof expoLocationModule.enableNetworkProviderAsync === 'function') {
+      try {
+        await expoLocationModule.enableNetworkProviderAsync();
+        return await expoLocationModule.hasServicesEnabledAsync();
+      } catch (promptErr) {
+        // User dismissed the Google Play Services dialog or hardware lacks provider
+        console.warn('[LinkWorks Location] User declined to enable location services or prompt failed:', promptErr);
+        return false;
+      }
+    }
+    return false;
+  } catch (err) {
+    console.warn('[LinkWorks Location] Error checking system location services:', err);
+    return true;
+  }
 }
 
 // Request foreground location permissions safely without crashing if native module is absent
@@ -78,36 +121,102 @@ export async function getLastKnownDeviceLocation(): Promise<LocationCoords | nul
   }
 }
 
-// Query device coordinates from Fused Location Provider with high accuracy and timeout protection.
+// Query device coordinates using a multi-tier strategy (indoor-resilient Balanced + outdoor High satellite fix).
+// If high accuracy GPS satellites time out indoors (obscured sky), gracefully falls back to the Balanced fix
+// instead of failing and reverting to Colombo center coordinates.
 export async function getCurrentDeviceLocation(
   accuracyHigh = true
 ): Promise<LocationCoords | null> {
-  if (!expoLocationModule) {
+  if (!expoLocationModule || typeof expoLocationModule.getCurrentPositionAsync !== 'function') {
+    return null;
+  }
+
+  // Tier 1: Query with Balanced accuracy (Wi-Fi + cellular network triangulation)
+  // Highly resilient indoors where satellite signals cannot penetrate building walls, resolving in 1-2s.
+  let balancedCoords: LocationCoords | null = null;
+  try {
+    const balancedAccuracy = expoLocationModule.Accuracy?.Balanced ?? 3;
+    const balancedPromise = expoLocationModule.getCurrentPositionAsync({ accuracy: balancedAccuracy });
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
+    const pos = await Promise.race([balancedPromise, timeoutPromise]);
+    if (pos?.coords) {
+      balancedCoords = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      };
+    }
+  } catch (err) {
+    console.warn('[LinkWorks Location] Balanced accuracy lookup encountered error:', err);
+  }
+
+  // If high accuracy is not requested and we already have a balanced fix, return it immediately
+  if (!accuracyHigh && balancedCoords) {
+    return balancedCoords;
+  }
+
+  // Tier 2: Query with High accuracy (GPS satellite lock)
+  // Provides 3-5 meter pinpoint precision when outdoors with clear line of sight to satellites.
+  try {
+    const highAccuracy = expoLocationModule.Accuracy?.High ?? 4;
+    const highPromise = expoLocationModule.getCurrentPositionAsync({ accuracy: highAccuracy });
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4500));
+    const pos = await Promise.race([highPromise, timeoutPromise]);
+    if (pos?.coords) {
+      return {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      };
+    }
+  } catch (err) {
+    console.warn('[LinkWorks Location] High accuracy lookup encountered error:', err);
+  }
+
+  // If High accuracy timed out (e.g. user is indoors with weak satellite signal), gracefully return the Balanced fix!
+  if (balancedCoords) {
+    return balancedCoords;
+  }
+
+  return null;
+}
+
+// Reverse-geocode latitude and longitude coordinates into a human-readable street/city address.
+export async function getReadableAddress(coords: LocationCoords): Promise<ReadableAddress | null> {
+  if (!expoLocationModule || typeof expoLocationModule.reverseGeocodeAsync !== 'function') {
     return null;
   }
   try {
-    const accuracy = accuracyHigh
-      ? (expoLocationModule.Accuracy?.High ?? 4)
-      : (expoLocationModule.Accuracy?.Balanced ?? 3);
-
-    // Timeout protection: prevent infinite hang when GPS satellites are obscured indoors
-    const positionPromise = expoLocationModule.getCurrentPositionAsync({ accuracy });
-    const timeoutPromise = new Promise<null>((resolve) =>
-      setTimeout(() => resolve(null), 8000)
-    );
-
-    const position = await Promise.race([positionPromise, timeoutPromise]);
-
-    if (!position?.coords) {
+    const results = await expoLocationModule.reverseGeocodeAsync({
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+    });
+    if (!results || results.length === 0) {
       return null;
     }
+    const item = results[0];
+    const parts = [item.name, item.street, item.subregion || item.city, item.region]
+      .filter(Boolean)
+      .filter((val, idx, arr) => arr.indexOf(val) === idx);
 
     return {
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
+      city: item.city,
+      district: item.district,
+      street: item.street,
+      subregion: item.subregion,
+      region: item.region,
+      name: item.name,
+      formattedAddress: parts.join(', ') || item.city || 'Current Location',
     };
   } catch (err) {
-    console.warn('[LinkWorks Location] Failed to obtain device coordinates:', err);
+    console.warn('[LinkWorks Location] Failed to reverse geocode coordinates:', err);
     return null;
+  }
+}
+
+// Open the operating system's native application settings screen so the user can easily grant location permissions.
+export async function openLocationSettings(): Promise<void> {
+  try {
+    await Linking.openSettings();
+  } catch (err) {
+    console.warn('[LinkWorks Location] Could not open application settings:', err);
   }
 }

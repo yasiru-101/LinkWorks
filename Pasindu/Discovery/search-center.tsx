@@ -13,7 +13,15 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { CITY_CENTERS, findNearestSupportedCity, type SupportedCity } from './geo';
-import { getCurrentDeviceLocation, getLastKnownDeviceLocation, isFusedLocationAvailable, requestLocationPermissions } from './location-service';
+import {
+  ensureLocationServicesEnabled,
+  getCurrentDeviceLocation,
+  getLastKnownDeviceLocation,
+  getReadableAddress,
+  isFusedLocationAvailable,
+  openLocationSettings,
+  requestLocationPermissions,
+} from './location-service';
 import { loadPersistedLocation, savePersistedLocation } from './location-storage';
 
 export type SearchCenterState = {
@@ -27,7 +35,9 @@ export type SearchCenterState = {
   coverageDistanceKm: number;
   permissionStatus: 'granted' | 'denied' | 'undetermined';
   locationError: string | null;
+  locationAddress: string | null;
   requestDeviceLocation: (forceRefresh?: boolean) => Promise<boolean>;
+  openSettings: () => Promise<void>;
   setCity: (city: SupportedCity) => void;
   setRadiusKm: (radius: number) => void;
 };
@@ -54,8 +64,9 @@ export function SearchCenterProvider({
   const [coverageDistanceKm, setCoverageDistanceKm] = useState<number>(0);
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationAddress, setLocationAddress] = useState<string | null>(null);
 
-  // Request device coordinates using two-stage lookup (0ms cache hit + fresh satellite fix).
+  // Request device coordinates using multi-tier lookup (system service enablement -> 0ms cache hit -> fresh GPS fix).
   const requestDeviceLocation = useCallback(async (forceRefresh = false): Promise<boolean> => {
     try {
       setIsLocating(true);
@@ -65,11 +76,21 @@ export function SearchCenterProvider({
       if (!isFusedLocationAvailable()) {
         setIsGpsActive(false);
         setPermissionStatus('denied');
-        setLocationError('Native location module not present in this APK build. Using city center.');
+        setLocationError('Native location module not present in this APK build. Showing city center.');
         return false;
       }
 
-      // Check / request foreground location permission
+      // Check whether device location services (hardware toggle) are enabled on the phone.
+      // On Android, this triggers Google Play Services' standard "Turn on device location" dialog if off.
+      const servicesEnabled = await ensureLocationServicesEnabled();
+      if (!servicesEnabled) {
+        setIsGpsActive(false);
+        setIsLocating(false);
+        setLocationError('Device location is turned off. Please turn on GPS in quick settings.');
+        return false;
+      }
+
+      // Check and request foreground location permission
       const { status } = await requestLocationPermissions();
       setPermissionStatus(status === 'granted' ? 'granted' : 'denied');
 
@@ -103,13 +124,14 @@ export function SearchCenterProvider({
         });
       }
 
-      // Stage B (High Accuracy Fix): Query Android Fused Location Provider with 8s timeout protection
+      // Stage B (Multi-tier Live Fix): Query Fused Location with indoor-resilient Balanced + outdoor High satellite fix
       const fresh = await getCurrentDeviceLocation(true);
       if (fresh) {
         const freshCoords = { lat: fresh.latitude, lng: fresh.longitude };
         setLat(freshCoords.lat);
         setLng(freshCoords.lng);
         setIsGpsActive(true);
+        setLocationError(null);
 
         const freshMatch = findNearestSupportedCity(freshCoords);
         setCityState(freshMatch.city);
@@ -122,17 +144,25 @@ export function SearchCenterProvider({
           city: freshMatch.city,
         });
 
+        // Optionally reverse geocode coordinates in the background to display exact town/suburb name
+        void getReadableAddress(fresh).then((addr) => {
+          if (addr?.formattedAddress) {
+            setLocationAddress(addr.formattedAddress);
+          }
+        });
+
         return true;
       }
 
       // If fresh satellites timed out indoors but we got a valid cache hit, consider it successful
       if (hadCacheHit) {
+        setLocationError(null);
         return true;
       }
 
       // If no GPS fix could be acquired and we had no cache
       setIsGpsActive(false);
-      setLocationError('Could not obtain GPS fix. Showing city center.');
+      setLocationError('Could not obtain live GPS fix. Showing city center.');
       return false;
     } catch (err) {
       setIsGpsActive(false);
@@ -183,6 +213,7 @@ export function SearchCenterProvider({
     setIsGpsActive(false);
     setIsOutOfCoverage(false);
     setLocationError(null);
+    setLocationAddress(`${nextCity} City Center`);
   }
 
   const value: SearchCenterState = {
@@ -196,7 +227,9 @@ export function SearchCenterProvider({
     coverageDistanceKm,
     permissionStatus,
     locationError,
+    locationAddress,
     requestDeviceLocation,
+    openSettings: openLocationSettings,
     setCity,
     setRadiusKm,
   };
@@ -220,7 +253,9 @@ export function useSearchCenter(): SearchCenterState {
       coverageDistanceKm: 0,
       permissionStatus: 'undetermined',
       locationError: null,
+      locationAddress: null,
       requestDeviceLocation: async () => false,
+      openSettings: async () => {},
       setCity: () => {},
       setRadiusKm: () => {},
     };

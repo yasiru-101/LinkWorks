@@ -29,7 +29,6 @@ import { useAuth } from '../../../Yasiru/Auth/AuthContext';
 
 const illustration = require('../../assets/images/login/workers-illustration.png');
 const badge = require('../../assets/images/login/brand-badge.png');
-const arrow = require('../../assets/images/login/arrow-right.png');
 const statusIcons = require('../../assets/images/login/status-icons.png');
 
 export default function WelcomeScreen() {
@@ -65,25 +64,37 @@ export default function WelcomeScreen() {
           </View>
         )}
 
-        <View style={[styles.illustrationWindow, { height: illustrationSectionHeight }]}>
+        {/* Illustration sits behind everything via absolute positioning */}
+        <View pointerEvents="box-none" style={[styles.illustrationWindow, { height: illustrationSectionHeight }]}>
           <Image
             accessibilityIgnoresInvertColors
             source={illustration}
+            resizeMode="cover"
             style={{ width: frameWidth, height: (frameWidth * 512) / 228 }}
           />
         </View>
 
+        {/*
+          ScrollView must have pointerEvents="box-none" so touch events pass
+          through the transparent top area down to the illustration beneath it.
+          On native, elevation / z-index alone won't make the absolute layer
+          visually appear above the ScrollView; we instead keep the illustration
+          as a sibling drawn first (behind) and let the ScrollView background
+          be transparent at the top so the illustration shows through.
+        */}
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+          style={styles.scrollOverlay}>
           <View style={styles.header}>
             <Image source={badge} style={styles.badge} />
             <Text style={styles.brandName}>
               <Text style={styles.brandLink}>Link</Text>
               <Text style={styles.brandWorks}>Works</Text>
             </Text>
+            {/* Use plain apostrophe and ampersand — HTML entities don't render on native */}
             <Text style={styles.subtitle}>
-              Sri Lanka&apos;s Skilled Trade &amp; Local Services{'\n'}Marketplace
+              {"Sri Lanka's Skilled Trade & Local Services\nMarketplace"}
             </Text>
           </View>
 
@@ -98,7 +109,8 @@ export default function WelcomeScreen() {
               }}
               style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
               <Text style={styles.primaryLabel}>Create Account</Text>
-              <Image source={arrow} style={styles.arrow} />
+              {/* Reliable vector arrow glyph avoids asset resolution mismatch on native devices */}
+              <Text style={styles.arrowGlyph}>→</Text>
             </Pressable>
 
             <Pressable
@@ -114,11 +126,11 @@ export default function WelcomeScreen() {
             </Pressable>
 
             <Text style={styles.terms}>
-              By continuing, you agree to LinkWorks{' '}
+              {'By continuing, you agree to LinkWorks '}
               <Text onPress={() => router.push('/terms')} style={styles.termsLink}>
-                Terms &amp; Conditions
+                {'Terms & Conditions'}
               </Text>
-              .
+              {'.'}
             </Text>
           </View>
         </ScrollView>
@@ -158,7 +170,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     zIndex: 0,
   },
-  scrollContent: { minHeight: 500, paddingBottom: 24, zIndex: 1 },
+  // The ScrollView itself must be transparent so the absolute illustration
+  // painted behind it can show through on the native (Android/iOS) layer.
+  scrollOverlay: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { minHeight: 500, paddingBottom: 24 },
   header: { alignItems: 'center', marginTop: Platform.OS === 'web' ? 32 : 42 },
   badge: { width: 84, height: 84, borderRadius: 16, marginBottom: 24 },
   brandName: {
@@ -201,6 +216,13 @@ const styles = StyleSheet.create({
     lineHeight: 22.5,
   },
   arrow: { width: 20, height: 20, marginLeft: 8 },
+  arrowGlyph: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 8,
+    lineHeight: 22,
+  },
   secondaryButton: {
     height: 53,
     borderRadius: 100,
@@ -223,10 +245,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     fontWeight: '400',
-    lineHeight: 19.5,
+    lineHeight: 18,
     textAlign: 'center',
-    marginTop: 21,
-    paddingHorizontal: 25,
+    marginTop: 20,
+    paddingHorizontal: 20,
   },
   termsLink: { color: '#034e3f', fontWeight: '600' },
   pressed: { opacity: 0.85 },

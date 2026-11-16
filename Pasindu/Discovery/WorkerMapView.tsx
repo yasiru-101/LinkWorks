@@ -41,6 +41,7 @@ export interface WorkerMapViewProps {
   radiusKm: number;
   isGpsActive?: boolean;
   isLocating?: boolean;
+  locationError?: string | null;
   onRequestGps?: (forceRefresh?: boolean) => Promise<boolean>;
   onSelectWorker?: (worker: WorkerWithDistance) => void;
 }
@@ -55,6 +56,7 @@ export default function WorkerMapView({
   radiusKm,
   isGpsActive = false,
   isLocating = false,
+  locationError = null,
   onRequestGps,
   onSelectWorker,
 }: WorkerMapViewProps) {
@@ -158,7 +160,7 @@ export default function WorkerMapView({
           ) : (
             <View style={[styles.gpsDot, isGpsActive && styles.gpsDotActive]} />
           )}
-          <Text style={[styles.gpsBadgeText, isGpsActive && styles.gpsBadgeTextActive]}>
+          <Text numberOfLines={1} style={[styles.gpsBadgeText, isGpsActive && styles.gpsBadgeTextActive]}>
             {isLocating
               ? 'Locating…'
               : isGpsActive
@@ -167,6 +169,21 @@ export default function WorkerMapView({
           </Text>
         </Pressable>
       </View>
+
+      {/* Informational banner when live GPS is inactive to guide the user */}
+      {!isGpsActive && (
+        <View style={styles.gpsNoticeBanner}>
+          <Text style={styles.gpsNoticeIcon}>📍</Text>
+          <View style={styles.gpsNoticeContent}>
+            <Text style={styles.gpsNoticeTitle}>Showing {city} City Center</Text>
+            <Text style={styles.gpsNoticeSubtitle}>
+              {locationError
+                ? locationError
+                : "Live GPS is inactive. Tap '📍 Use Live GPS' above to center the map on your exact coordinates."}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Interactive Map Canvas */}
       <View style={styles.canvasContainer} onLayout={handleCanvasLayout}>
@@ -229,10 +246,12 @@ export default function WorkerMapView({
 
         {/* Layer 3: User's Live Location Pin (Focal Center) */}
         <View style={[styles.userLocationMarker, { left: centerX - 14, top: centerY - 14 }]}>
-          <View style={styles.userPulseRing} />
-          <View style={styles.userDotCenter} />
-          <View style={styles.userLabelBubble}>
-            <Text style={styles.userLabelText}>📍 You are here</Text>
+          <View style={[styles.userPulseRing, !isGpsActive && styles.userPulseRingInactive]} />
+          <View style={[styles.userDotCenter, !isGpsActive && styles.userDotCenterInactive]} />
+          <View style={[styles.userLabelBubble, !isGpsActive && styles.userLabelBubbleInactive]}>
+            <Text style={[styles.userLabelText, !isGpsActive && styles.userLabelTextInactive]}>
+              {isGpsActive ? '📍 Your Live Location' : `📍 ${city} Center`}
+            </Text>
           </View>
         </View>
 
@@ -513,18 +532,61 @@ const styles = StyleSheet.create({
   },
   userLabelBubble: {
     position: 'absolute',
-    bottom: -22,
+    bottom: -24,
     backgroundColor: '#1e293b',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 8,
-    minWidth: 90,
     alignItems: 'center',
+    justifyContent: 'center',
+    width: 136,
+    left: -54,
   },
   userLabelText: {
     color: '#ffffff',
     fontSize: 10,
     fontWeight: '700',
+  },
+  userPulseRingInactive: {
+    backgroundColor: 'rgba(217, 119, 6, 0.2)',
+    borderColor: '#d97706',
+  },
+  userDotCenterInactive: {
+    backgroundColor: '#b45309',
+  },
+  userLabelBubbleInactive: {
+    backgroundColor: '#78350f',
+  },
+  userLabelTextInactive: {
+    color: '#fef3c7',
+  },
+  gpsNoticeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fffbeb',
+    borderColor: '#fef3c7',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  gpsNoticeIcon: {
+    fontSize: 16,
+  },
+  gpsNoticeContent: {
+    flex: 1,
+  },
+  gpsNoticeTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#92400e',
+  },
+  gpsNoticeSubtitle: {
+    fontSize: 11,
+    color: '#b45309',
+    marginTop: 2,
+    lineHeight: 15,
   },
   workerPinContainer: {
     position: 'absolute',

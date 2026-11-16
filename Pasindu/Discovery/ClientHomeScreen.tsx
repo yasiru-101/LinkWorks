@@ -39,6 +39,7 @@ export default function ClientHomeScreen() {
     isGpsActive,
     isLocating,
     isOutOfCoverage,
+    locationError,
     requestDeviceLocation,
     setCity,
     setRadiusKm,
@@ -257,6 +258,7 @@ export default function ClientHomeScreen() {
             radiusKm={radiusKm}
             isGpsActive={isGpsActive}
             isLocating={isLocating}
+            locationError={locationError}
             onRequestGps={requestDeviceLocation}
             onSelectWorker={(w) =>
               router.push({ pathname: '/worker/[id]', params: { id: w.userId } })

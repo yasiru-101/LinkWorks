@@ -34,7 +34,6 @@ import { useAuth } from './AuthContext';
 import { getSafeAuth } from './firebase';
 
 // Load brand identity assets from the shared mobile login assets.
-const arrow = require('../../mobile/assets/images/login/arrow-right.png');
 const badge = require('../../mobile/assets/images/login/brand-badge.png');
 const statusIcons = require('../../mobile/assets/images/login/status-icons.png');
 
@@ -219,8 +218,10 @@ export default function PhoneScreen() {
               >
                 <Text style={styles.backButtonText}>←</Text>
               </Pressable>
-              <Image source={badge} style={styles.headerBadge} />
-              <View style={styles.topBarPlaceholder} />
+              {/* Brand badge only on web; on native the system nav bar already provides context */}
+              {isWeb && <Image source={badge} style={styles.headerBadge} />}
+              {/* Spacer keeps back button left-aligned whether badge is shown or not */}
+              {isWeb && <View style={styles.topBarPlaceholder} />}
             </View>
 
             {/* Header Title Section */}
@@ -284,7 +285,8 @@ export default function PhoneScreen() {
                   ) : (
                     <>
                       <Text style={styles.primaryButtonText}>Send Verification Code</Text>
-                      <Image source={arrow} style={styles.arrowIcon} />
+                      {/* Robust vector arrow glyph ensures crisp rendering without bitmap asset corruption */}
+                      <Text style={styles.arrowGlyph}>→</Text>
                     </>
                   )}
                 </Pressable>
@@ -377,7 +379,8 @@ export default function PhoneScreen() {
                   ) : (
                     <>
                       <Text style={styles.primaryButtonText}>Verify & Continue</Text>
-                      <Image source={arrow} style={styles.arrowIcon} />
+                      {/* Robust vector arrow glyph ensures crisp rendering without bitmap asset corruption */}
+                      <Text style={styles.arrowGlyph}>→</Text>
                     </>
                   )}
                 </Pressable>
@@ -686,6 +689,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     resizeMode: 'contain',
     tintColor: '#ffffff',
+  },
+  arrowGlyph: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 8,
+    lineHeight: 22,
   },
   messageBanner: {
     flexDirection: 'row',
