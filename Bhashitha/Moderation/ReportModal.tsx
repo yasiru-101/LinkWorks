@@ -1,3 +1,14 @@
+/**
+ * LinkWorks User & Content Moderation Report Modal
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Safety and trust reporting dialog:
+ * 1. Reason Selection: Predefined violation categories (spam, harassment, no-shows, unfair pricing).
+ * 2. Details: Free-form explanation textarea for additional evidence.
+ * 3. Firestore Logging: Persists moderation tickets to `reports/{reportId}` for administrative review.
+ */
+
 import { addDoc, collection, getFirestore, serverTimestamp } from '@react-native-firebase/firestore';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';

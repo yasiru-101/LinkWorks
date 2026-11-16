@@ -1,3 +1,14 @@
+/**
+ * Local User Blocklist & Safety Filtering Store
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Manages blocked users:
+ * 1. Prevents abusive or blocked counterparties from appearing in worker search and chat.
+ * 2. Caches blocklist in memory and syncs to local storage for persistence across reloads.
+ * 3. Provides `isUserBlocked`, `blockUser`, and `unblockUser` helper functions.
+ */
+
 // In-memory set of blocked user IDs for the active session, with optional localStorage fallback.
 const inMemoryBlocklist: Set<string> = new Set();
 
