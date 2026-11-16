@@ -426,6 +426,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 20,
     color: palette.primary,
     fontWeight: '700',
@@ -485,6 +486,7 @@ const styles = StyleSheet.create({
     borderColor: '#c6e7d9',
   },
   callIconText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
   },
   jobContextBanner: {
@@ -514,6 +516,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   jobBannerIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 14,
   },
   jobBannerTitle: {
@@ -657,6 +660,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   photoCameraIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 24,
   },
   photoAttachmentLabel: {
@@ -689,6 +693,7 @@ const styles = StyleSheet.create({
     color: '#8da49b',
   },
   readTicks: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 10,
     color: '#95d5c0',
     fontWeight: '700',
@@ -714,6 +719,7 @@ const styles = StyleSheet.create({
     borderColor: '#d2e5dd',
   },
   attachmentIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 18,
   },
   textInput: {
@@ -747,6 +753,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   sendIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '700',

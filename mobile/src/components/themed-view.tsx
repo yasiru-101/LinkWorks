@@ -1,3 +1,11 @@
+/**
+ * LinkWorks Adaptive Background View Primitive
+ * 
+ * Owned by: Bhashitha (Design system & UI components)
+ * 
+ * Standard container component automatically adapting background colors to the active theme palette.
+ */
+
 import { View, type ViewProps } from 'react-native';
 
 import { ThemeColor } from '@/constants/theme';
@@ -9,6 +17,7 @@ export type ThemedViewProps = ViewProps & {
   type?: ThemeColor;
 };
 
+// Layout container primitive applying themed background tokens
 export function ThemedView({ style, lightColor, darkColor, type, ...otherProps }: ThemedViewProps) {
   const theme = useTheme();
 

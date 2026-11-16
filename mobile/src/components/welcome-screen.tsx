@@ -1,41 +1,47 @@
 /**
  * LinkWorks Welcome & Landing Screen Component
- * 
+ *
  * Framework path: `mobile/src/components/welcome-screen.tsx`
  * Owned by: Yasiru (Phone authentication, onboarding) & Bhashitha (Design system)
- * 
+ *
  * First user-facing screen of LinkWorks:
- * 1. Brand Visual: Responsive worker illustration adapting to phone and web aspect ratios.
- * 2. Auth State Router: Automatically redirects authenticated users to their active home feed
- *    or profile setup if incomplete.
- * 3. Onboarding Actions: Quick entry points to Sign In (Phone OTP) or Create Account.
+ * 1. Full-screen brand visual: immersive deep-green canvas with decorative depth circles, code-drawn logo and tagline.
+ * 2. Onboarding actions: high-contrast Create Account and Log In buttons leading to Phone OTP, plus Terms link.
+ * 3. Auth state router: sends already signed-in users straight to their home, setup or worker setup.
+ *
+ * The screen is built only from Views and Text (no image files), so it renders the same on
+ * Android, iOS and web and does not depend on bundled image assets.
  */
 
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
-import {
-  Image,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../../Yasiru/Auth/AuthContext';
 
-const illustration = require('../../assets/images/login/workers-illustration.png');
-const badge = require('../../assets/images/login/brand-badge.png');
-const statusIcons = require('../../assets/images/login/status-icons.png');
+// Brand colours for this screen (deep green from the shared palette plus lighter tints for the hero).
+const COLORS = {
+  brand: '#034e3f',
+  brandDark: '#023e31',
+  brandSoft: '#e6f4ef',
+  accent: '#34d399',
+  background: '#f5faf8',
+  surface: '#ffffff',
+  heading: '#091e19',
+  body: '#4b635d',
+  border: '#d9e5df',
+};
+
+const FONT = 'Plus Jakarta Sans';
 
 export default function WelcomeScreen() {
-  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const { user, profile, workerReady, signOut } = useAuth();
 
-  // Redirect to main tabs as soon as user profile is authenticated
+  // Redirect signed-in users away from the welcome screen:
+  // complete profile -> main tabs (worker feed or client home), worker without setup -> worker setup,
+  // signed in but no profile yet -> profile setup.
   useEffect(() => {
     if (user && profile) {
       if (profile.isWorker && !workerReady) {
@@ -48,86 +54,69 @@ export default function WelcomeScreen() {
     }
   }, [user, profile, workerReady]);
 
-  const [frameWidth, setFrameWidth] = useState(Math.min(width, 390));
-  const illustrationSectionHeight = (frameWidth * 360) / 390;
+  // Both buttons open the phone OTP screen; mode decides the wording there.
+  // A stale half-finished session is signed out first so the user starts cleanly.
+  function openPhone(mode: 'register' | 'login') {
+    if (user) {
+      void signOut();
+    }
+    router.push({ pathname: '/phone', params: { mode } });
+  }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={Platform.OS === 'web' ? [] : ['top']}>
-      <StatusBar style="dark" />
-      <View
-        onLayout={(event) => setFrameWidth(event.nativeEvent.layout.width)}
-        style={[styles.frame, Platform.OS === 'web' && styles.webFrame]}>
-        {Platform.OS === 'web' && (
-          <View style={styles.webStatusBar}>
-            <Text style={styles.webTime}>9:41</Text>
-            <Image source={statusIcons} style={styles.statusIcons} />
-          </View>
-        )}
+    <View style={styles.root}>
+      {/* Light status bar icons sit on top of the full-screen deep green background. */}
+      <StatusBar style="light" />
+      <View style={[styles.frame, Platform.OS === 'web' && styles.webFrame]}>
+        {/* Soft decorative background circles give the full-screen green canvas depth. */}
+        <View pointerEvents="none" style={[styles.circle, styles.circleLarge]} />
+        <View pointerEvents="none" style={[styles.circle, styles.circleMid]} />
+        <View pointerEvents="none" style={[styles.circle, styles.circleSmall]} />
 
-        {/* Illustration sits behind everything via absolute positioning */}
-        <View pointerEvents="box-none" style={[styles.illustrationWindow, { height: illustrationSectionHeight }]}>
-          <Image
-            accessibilityIgnoresInvertColors
-            source={illustration}
-            resizeMode="cover"
-            style={{ width: frameWidth, height: (frameWidth * 512) / 228 }}
-          />
-        </View>
+        {/* ScrollView allows the layout to adapt gracefully to various screen heights. */}
+        <ScrollView bounces={false} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Brand presentation: logo, brand name, tagline and trust pill. */}
+          <View style={[styles.hero, { paddingTop: insets.top + 48 }]}>
+            {/* Logo mark drawn in code: white rounded tile with a green "L" and a link dot. */}
+            <View style={styles.logoTile}>
+              <Text style={styles.logoLetter}>L</Text>
+              <View style={styles.logoDot} />
+            </View>
 
-        {/*
-          ScrollView must have pointerEvents="box-none" so touch events pass
-          through the transparent top area down to the illustration beneath it.
-          On native, elevation / z-index alone won't make the absolute layer
-          visually appear above the ScrollView; we instead keep the illustration
-          as a sibling drawn first (behind) and let the ScrollView background
-          be transparent at the top so the illustration shows through.
-        */}
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          style={styles.scrollOverlay}>
-          <View style={styles.header}>
-            <Image source={badge} style={styles.badge} />
             <Text style={styles.brandName}>
-              <Text style={styles.brandLink}>Link</Text>
-              <Text style={styles.brandWorks}>Works</Text>
+              Link<Text style={styles.brandAccent}>Works</Text>
             </Text>
-            {/* Use plain apostrophe and ampersand — HTML entities don't render on native */}
-            <Text style={styles.subtitle}>
-              {"Sri Lanka's Skilled Trade & Local Services\nMarketplace"}
-            </Text>
+            <Text style={styles.tagline}>{"Sri Lanka's marketplace for skilled trades and local services"}</Text>
+
+            <View style={styles.pill}>
+              <View style={styles.pillDot} />
+              <Text style={styles.pillText}>Trusted local workers, one tap away</Text>
+            </View>
           </View>
 
-          <View style={styles.actions}>
+          {/* Spacer pushes the actions to the bottom when the screen has spare height. */}
+          <View style={styles.spacer} />
+
+          {/* Actions: primary Create Account, secondary Log In, then the Terms notice. */}
+          <View style={[styles.actions, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
             <Pressable
               accessibilityRole="button"
-              onPress={() => {
-                if (user) {
-                  void signOut();
-                }
-                router.push({ pathname: '/phone', params: { mode: 'register' } });
-              }}
+              onPress={() => openPhone('register')}
               style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
               <Text style={styles.primaryLabel}>Create Account</Text>
-              {/* Reliable vector arrow glyph avoids asset resolution mismatch on native devices */}
-              <Text style={styles.arrowGlyph}>→</Text>
+              <Text style={styles.primaryArrow}>→</Text>
             </Pressable>
 
             <Pressable
               accessibilityRole="button"
-              onPress={() => {
-                if (user) {
-                  void signOut();
-                }
-                router.push({ pathname: '/phone', params: { mode: 'login' } });
-              }}
+              onPress={() => openPhone('login')}
               style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
               <Text style={styles.secondaryLabel}>Log In</Text>
             </Pressable>
 
             <Text style={styles.terms}>
-              {'By continuing, you agree to LinkWorks '}
-              <Text onPress={() => router.push('/terms')} style={styles.termsLink}>
+              {'By continuing, you agree to the LinkWorks '}
+              <Text accessibilityRole="link" onPress={() => router.push('/terms')} style={styles.termsLink}>
                 {'Terms & Conditions'}
               </Text>
               {'.'}
@@ -135,121 +124,116 @@ export default function WelcomeScreen() {
           </View>
         </ScrollView>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Platform.OS === 'web' ? '#f3f4f6' : '#ffffff' },
-  frame: { flex: 1, width: '100%', backgroundColor: '#ffffff', overflow: 'hidden' },
-  webFrame: {
-    alignSelf: 'center',
-    width: 390,
-    maxWidth: '100%',
-    maxHeight: 884,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 40,
-  },
-  webStatusBar: {
-    height: 34.5,
-    flexDirection: 'row',
+  // Full-screen deep green background across native and web viewport.
+  root: { flex: 1, backgroundColor: Platform.OS === 'web' ? '#022921' : COLORS.brand },
+  frame: { flex: 1, width: '100%', backgroundColor: COLORS.brand, overflow: 'hidden' },
+  webFrame: { alignSelf: 'center', maxWidth: 430 },
+  scrollContent: { flexGrow: 1 },
+
+  // Brand presentation container
+  hero: {
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 28,
   },
-  webTime: { color: '#091e19', fontFamily: 'Plus Jakarta Sans', fontWeight: '700', fontSize: 15 },
-  statusIcons: { width: 64, height: 16 },
-  illustrationWindow: {
+  circle: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.05)' },
+  circleLarge: { width: 340, height: 340, top: -100, right: -120 },
+  circleMid: { width: 200, height: 200, top: '48%', left: -80 },
+  circleSmall: { width: 240, height: 240, bottom: -60, right: -70 },
+  logoTile: {
+    width: 76,
+    height: 76,
+    borderRadius: 22,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  logoLetter: { fontFamily: FONT, fontSize: 40, fontWeight: '800', color: COLORS.brand, lineHeight: 48 },
+  logoDot: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-    zIndex: 0,
+    right: 16,
+    bottom: 18,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.accent,
+    borderWidth: 2,
+    borderColor: COLORS.surface,
   },
-  // The ScrollView itself must be transparent so the absolute illustration
-  // painted behind it can show through on the native (Android/iOS) layer.
-  scrollOverlay: { flex: 1, backgroundColor: 'transparent' },
-  scrollContent: { minHeight: 500, paddingBottom: 24 },
-  header: { alignItems: 'center', marginTop: Platform.OS === 'web' ? 32 : 42 },
-  badge: { width: 84, height: 84, borderRadius: 16, marginBottom: 24 },
-  brandName: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: -0.75,
-    lineHeight: 36,
-    marginBottom: 10,
-  },
-  brandLink: { color: '#023e31' },
-  brandWorks: { color: '#055b49' },
-  subtitle: {
-    color: '#4b635d',
-    fontFamily: 'Plus Jakarta Sans',
+  brandName: { fontFamily: FONT, fontSize: 34, fontWeight: '800', color: COLORS.surface, letterSpacing: -0.5, lineHeight: 42 },
+  brandAccent: { fontFamily: FONT, color: COLORS.accent },
+  tagline: {
+    fontFamily: FONT,
+    fontSize: 15,
     fontWeight: '500',
-    fontSize: 14,
-    lineHeight: 22.75,
+    color: 'rgba(255,255,255,0.85)',
     textAlign: 'center',
+    lineHeight: 22,
+    marginTop: 8,
+    maxWidth: 300,
   },
-  actions: { paddingHorizontal: 24, marginTop: 32, alignItems: 'stretch' },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  pillDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.accent, marginRight: 8 },
+  pillText: { fontFamily: FONT, fontSize: 12, fontWeight: '600', color: COLORS.surface, paddingRight: 2 },
+
+  spacer: { flex: 1, minHeight: 48 },
+
+  // Actions
+  actions: { paddingHorizontal: 20 },
   primaryButton: {
-    height: 54.5,
-    borderRadius: 100,
-    backgroundColor: '#034e3f',
+    height: 56,
+    borderRadius: 999,
+    backgroundColor: COLORS.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#034e3f',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 4,
   },
-  primaryLabel: {
-    color: '#ffffff',
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 22.5,
-  },
-  arrow: { width: 20, height: 20, marginLeft: 8 },
-  arrowGlyph: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
-    marginLeft: 8,
-    lineHeight: 22,
-  },
+  primaryLabel: { fontFamily: FONT, fontSize: 16, fontWeight: '700', color: COLORS.brand, paddingHorizontal: 2 },
+  primaryArrow: { fontFamily: FONT, fontSize: 18, fontWeight: '700', color: COLORS.brand, marginLeft: 8 },
   secondaryButton: {
-    height: 53,
-    borderRadius: 100,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#034e3f',
+    height: 54,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.65)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 14,
+    marginTop: 12,
   },
-  secondaryLabel: {
-    color: '#034e3f',
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 22.5,
-  },
+  secondaryLabel: { fontFamily: FONT, fontSize: 15, fontWeight: '700', color: COLORS.surface, paddingHorizontal: 2 },
   terms: {
-    color: '#556d67',
-    fontFamily: 'Plus Jakarta Sans',
+    fontFamily: FONT,
     fontSize: 12,
     fontWeight: '400',
+    color: 'rgba(255,255,255,0.72)',
     lineHeight: 18,
     textAlign: 'center',
-    marginTop: 20,
-    paddingHorizontal: 20,
+    marginTop: 16,
+    paddingHorizontal: 12,
   },
-  termsLink: { color: '#034e3f', fontWeight: '600' },
+  termsLink: { fontFamily: FONT, color: COLORS.surface, fontWeight: '700', textDecorationLine: 'underline' },
   pressed: { opacity: 0.85 },
 });

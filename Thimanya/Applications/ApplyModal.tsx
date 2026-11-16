@@ -19,6 +19,7 @@ import type { Job } from '../../mobile/src/types/domain';
 import { useAuth } from '../../Yasiru/Auth/AuthContext';
 import { getSafeFirestore } from '../../Yasiru/Auth/firebase';
 import { validateQuote } from '../JobContracts/validation';
+import { savePersistentApplication } from '../Jobs/job-storage';
 
 // Modal dialog for workers to submit a priced quote and pitch for an open job directly to Cloud Firestore.
 export function ApplyModal({
@@ -72,6 +73,15 @@ export function ApplyModal({
         status: 'submitted',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+      });
+
+      // Persist quote to on-device flash storage for reliable local presentation
+      await savePersistentApplication(job.id, {
+        workerId: user.uid,
+        quotedPriceLkr: priceLkr,
+        message: message.trim(),
+        status: 'submitted',
+        createdAt: new Date().toISOString(),
       });
 
       onSuccess?.();
@@ -159,16 +169,19 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   closeText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 18,
     fontWeight: '700',
   },
   jobTitle: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 16,
     fontWeight: '700',
   },
   budgetContext: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 13,
     marginBottom: spacing.xs,

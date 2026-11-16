@@ -4,7 +4,7 @@
  * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
  * 
  * Interactive bottom sheet / modal for choosing search location:
- * 1. Displays supported Sri Lankan hub cities (Colombo, Gampaha, Kandy, Galle, Negombo, Moratuwa).
+ * 1. Displays supported Sri Lankan hub cities (Colombo, Kelaniya, Gampaha, Kandy, Galle, Negombo).
  * 2. Highlights the currently active city.
  * 3. Provides an explicit action button to enable or re-center on live device GPS coordinates.
  */
@@ -123,6 +123,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Plus Jakarta Sans',
   },
   subtitle: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 13,
     lineHeight: 18,
@@ -139,21 +140,25 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   gpsIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 20,
   },
   gpsTextContainer: {
     flex: 1,
   },
   gpsTitle: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 14,
     fontWeight: '700',
     color: '#166534',
   },
   gpsSubtitle: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 11,
     color: '#15803d',
   },
   gpsArrow: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
     color: '#166534',
     fontWeight: '700',
@@ -163,6 +168,7 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   dividerText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 11,
     fontWeight: '700',
     color: palette.muted,
@@ -183,16 +189,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#e6f7ef',
   },
   cityName: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 15,
     fontWeight: '600',
     paddingRight: 6,
   },
   selectedName: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontWeight: '800',
   },
   checkmark: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 15,
     fontWeight: '800',
@@ -203,6 +212,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   closeText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 14,
     fontWeight: '700',

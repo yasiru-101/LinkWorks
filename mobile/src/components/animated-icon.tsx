@@ -1,3 +1,12 @@
+/**
+ * LinkWorks Native Animated Splash & Logo Components
+ * 
+ * Owned by: Bhashitha (Design system & UI branding)
+ * 
+ * Implements smooth spring-based splash dismissals and looping logo glow keyframe animations
+ * using React Native Reanimated.
+ */
+
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
 import { useState } from 'react';
@@ -8,6 +17,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
 
+// Animated overlay that coordinates seamless transition between native splash screen and React tree
 export function AnimatedSplashOverlay() {
   const [animate, setAnimate] = useState(false);
   const [visible, setVisible] = useState(true);
@@ -95,6 +105,7 @@ const glowKeyframe = new Keyframe({
   },
 });
 
+// Branded animated icon featuring a rotating ambient backlight and scaling entry keyframe
 export function AnimatedIcon() {
   return (
     <View style={styles.iconContainer}>

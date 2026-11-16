@@ -1,6 +1,8 @@
 /**
  * Metro Bundler Configuration for LinkWorks
  * 
+ * Owned by: Bhashitha (Integration, tooling & build infrastructure)
+ * 
  * Configures React Native / Expo asset and module resolution:
  * 1. Watches parent root workspace folders (`Yasiru/`, `Pasindu/`, `Thimanya/`, `Chanuli/`, `Bhashitha/`).
  * 2. Resolves shared packages strictly from `mobile/node_modules`.

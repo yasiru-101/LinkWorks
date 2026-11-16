@@ -1,12 +1,17 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * LinkWorks Design Tokens & Theme Constants
+ * 
+ * Owned by: Bhashitha (Design system & UI components)
+ * 
+ * Provides color palettes, typography mappings, spacing increments, and device inset rules
+ * supporting consistent theming across light and dark system appearances.
  */
 
 import '@/global.css';
 
 import { Platform } from 'react-native';
 
+// Standard chromatic palette tokens for light and dark UI themes
 export const Colors = {
   light: {
     text: '#000000',
@@ -26,6 +31,7 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+// Cross-platform font families mapping system fallbacks for iOS, Android, and Web
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */
@@ -51,6 +57,7 @@ export const Fonts = Platform.select({
   },
 });
 
+// Uniform 8-point typographic and spatial scale
 export const Spacing = {
   half: 2,
   one: 4,
@@ -61,5 +68,8 @@ export const Spacing = {
   six: 64,
 } as const;
 
+// Bottom navigation bar inset padding to clear system navigation gestures
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+
+// Maximum container width for widescreen responsive tablet and web layouts
 export const MaxContentWidth = 800;

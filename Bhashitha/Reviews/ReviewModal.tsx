@@ -192,11 +192,13 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   closeText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 18,
     fontWeight: '700',
   },
   subtitle: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 14,
     marginTop: -4,
@@ -211,6 +213,7 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   starIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 38,
   },
   starFilled: {
@@ -220,6 +223,7 @@ const styles = StyleSheet.create({
     color: '#d1d5db',
   },
   ratingCaption: {
+    fontFamily: 'Plus Jakarta Sans',
     textAlign: 'center',
     color: palette.heading,
     fontSize: 14,
@@ -227,12 +231,14 @@ const styles = StyleSheet.create({
     marginTop: -4,
   },
   inputLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 14,
     fontWeight: '600',
     marginBottom: spacing.xs,
   },
   textInput: {
+    fontFamily: 'Plus Jakarta Sans',
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 12,
@@ -254,6 +260,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   successIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 48,
     color: '#027a48',
   },
@@ -264,6 +271,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Plus Jakarta Sans',
   },
   successMsg: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 14,
     color: palette.muted,
     textAlign: 'center',

@@ -191,17 +191,20 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   closeText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 18,
     fontWeight: '700',
   },
   targetContext: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 13,
     fontWeight: '600',
     marginTop: -4,
   },
   sectionLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 14,
     fontWeight: '700',
@@ -236,16 +239,19 @@ const styles = StyleSheet.create({
     backgroundColor: palette.primary,
   },
   reasonText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 13,
     fontWeight: '500',
     flex: 1,
   },
   reasonTextActive: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontWeight: '700',
   },
   textInput: {
+    fontFamily: 'Plus Jakarta Sans',
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 12,
@@ -267,6 +273,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   successIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 48,
   },
   successTitle: {
@@ -276,6 +283,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Plus Jakarta Sans',
   },
   successMsg: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 14,
     color: palette.muted,
     textAlign: 'center',

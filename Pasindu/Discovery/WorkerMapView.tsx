@@ -60,8 +60,8 @@ export default function WorkerMapView({
   onRequestGps,
   onSelectWorker,
 }: WorkerMapViewProps) {
-  // Current zoom level for the map canvas (range: 10 to 16)
-  const [zoom, setZoom] = useState<number>(13);
+  // Current zoom level for the map canvas (range: 10 to 16, default 12 for optimal citywide trade spread)
+  const [zoom, setZoom] = useState<number>(12);
 
   // Map display style: standard roadmap or high-contrast satellite
   const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
@@ -256,13 +256,24 @@ export default function WorkerMapView({
         </View>
 
         {/* Layer 4: Plotted Worker Location Pins */}
-        {workers.map((worker) => {
+        {workers.map((worker, index) => {
           const isSelected = worker.userId === selectedWorker?.userId;
           const workerPixel = projectLatLngToPixels(worker.base.lat, worker.base.lng, zoom);
 
-          // Calculate offset relative to center coordinates in canvas pixels
-          const pinX = centerX + (workerPixel.x - centerPixel.x);
-          const pinY = centerY + (workerPixel.y - centerPixel.y);
+          // Stagger duplicate or near-identical coordinates so stacked worker pins fan out visibly
+          const hasDuplicate = workers.some(
+            (other, oIdx) =>
+              oIdx < index &&
+              Math.abs(other.base.lat - worker.base.lat) < 0.0015 &&
+              Math.abs(other.base.lng - worker.base.lng) < 0.0015
+          );
+          const staggerAngle = (index * 60 * Math.PI) / 180;
+          const offsetX = hasDuplicate ? Math.cos(staggerAngle) * 26 : 0;
+          const offsetY = hasDuplicate ? Math.sin(staggerAngle) * 26 : 0;
+
+          // Calculate offset relative to center coordinates in canvas pixels with anti-collision offset
+          const pinX = centerX + (workerPixel.x - centerPixel.x) + offsetX;
+          const pinY = centerY + (workerPixel.y - centerPixel.y) + offsetY;
 
           // Only render pins that are visible within the current canvas boundary
           if (pinX < -40 || pinX > canvasWidth + 40 || pinY < -40 || pinY > canvasHeight + 40) {
@@ -428,6 +439,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Plus Jakarta Sans',
   },
   mapSubtitle: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     color: palette.muted,
   },
@@ -457,6 +469,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#059669',
   },
   gpsBadgeText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 11,
     fontWeight: '700',
     color: '#4b5563',
@@ -501,6 +514,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   controlBtnText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
     fontWeight: '800',
     color: palette.heading,
@@ -543,6 +557,7 @@ const styles = StyleSheet.create({
     left: -54,
   },
   userLabelText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#ffffff',
     fontSize: 10,
     fontWeight: '700',
@@ -572,17 +587,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   gpsNoticeIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
   },
   gpsNoticeContent: {
     flex: 1,
   },
   gpsNoticeTitle: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     fontWeight: '700',
     color: '#92400e',
   },
   gpsNoticeSubtitle: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 11,
     color: '#b45309',
     marginTop: 2,
@@ -618,9 +636,11 @@ const styles = StyleSheet.create({
     borderColor: '#064e3b',
   },
   workerPinIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 14,
   },
   workerPinLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 11,
     fontWeight: '700',
     color: palette.heading,
@@ -661,6 +681,7 @@ const styles = StyleSheet.create({
     borderColor: '#86efac',
   },
   distancePillText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 10,
     fontWeight: '700',
     color: '#475569',
@@ -678,6 +699,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   googleWatermarkText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 9,
     fontWeight: '600',
     color: '#64748b',
@@ -706,6 +728,7 @@ const styles = StyleSheet.create({
     borderColor: palette.primary,
   },
   avatarLetter: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 18,
     fontWeight: '800',
     color: palette.primary,
@@ -721,6 +744,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   previewName: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
     fontWeight: '800',
     color: palette.heading,
@@ -734,11 +758,13 @@ const styles = StyleSheet.create({
     borderColor: '#a7f3d0',
   },
   verifiedTagText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 11,
     color: '#065f46',
     fontWeight: '800',
   },
   previewSkill: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     color: palette.muted,
     fontWeight: '600',
@@ -751,15 +777,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   metaRating: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     fontWeight: '700',
     color: '#b45309',
   },
   metaDot: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     color: palette.muted,
   },
   metaDistance: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     fontWeight: '700',
     color: palette.primary,
@@ -775,10 +804,12 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
   },
   rateLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 11,
     color: palette.muted,
   },
   rateValue: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 15,
     fontWeight: '800',
     color: palette.primary,
@@ -801,6 +832,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   directionsBtnText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#15803d',
     fontSize: 12,
     fontWeight: '700',
@@ -815,6 +847,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   profileBtnText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '700',
@@ -824,6 +857,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyMapText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 13,
   },

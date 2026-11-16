@@ -424,6 +424,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   backButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 15,
     fontWeight: '700',
@@ -441,17 +442,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   help: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     lineHeight: 20,
     fontSize: 14,
   },
   label: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 4,
   },
   sublabel: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 12,
     fontWeight: '600',
@@ -478,19 +482,23 @@ const styles = StyleSheet.create({
     borderColor: palette.primary,
   },
   tradeIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 14,
   },
   chipText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 13,
     fontWeight: '600',
     paddingRight: 6,
   },
   selectedText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#fff',
     fontWeight: '700',
   },
   selectedCheck: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#fff',
     fontSize: 12,
     fontWeight: '800',
@@ -500,6 +508,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   customInput: {
+    fontFamily: 'Plus Jakarta Sans',
     flex: 1,
     borderWidth: 1,
     borderColor: palette.border,
@@ -518,6 +527,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addBtnText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#fff',
     fontSize: 14,
     fontWeight: '700',
@@ -534,6 +544,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   suggestionText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     color: palette.muted,
     fontWeight: '600',
@@ -551,6 +562,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   activePillsTitle: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 13,
     fontWeight: '700',
@@ -568,6 +580,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   activeSkillTagText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 12,
     fontWeight: '700',
@@ -581,6 +594,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   removeTagText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.danger,
     fontSize: 13,
     fontWeight: '800',
@@ -593,6 +607,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   switchHelp: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 12,
   },

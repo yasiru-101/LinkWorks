@@ -307,6 +307,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   eyebrow: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 11,
     fontWeight: '800',
@@ -339,13 +340,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0fdf4',
   },
   cityPinIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 13,
   },
   cityDropdownIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 9,
     color: palette.muted,
   },
   cityText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 12,
     fontWeight: '700',
@@ -367,6 +371,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   searchIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
     marginRight: 8,
   },
@@ -381,6 +386,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   clearSearchText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     color: palette.muted,
     fontWeight: '700',
@@ -430,11 +436,13 @@ const styles = StyleSheet.create({
     borderColor: '#fde68a',
   },
   coverageNoticeTitle: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 15,
     fontWeight: '800',
     color: '#92400e',
   },
   coverageNoticeBody: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 13,
     color: '#78350f',
     lineHeight: 18,
@@ -448,6 +456,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   coverageNoticeButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '700',
@@ -465,11 +474,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bannerTitle: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '700',
   },
   bannerSubtitle: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#d4ece4',
     fontSize: 12,
     marginTop: 2,
@@ -482,6 +493,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   bannerButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 13,
     fontWeight: '700',
@@ -494,6 +506,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   radiusLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 13,
     fontWeight: '600',
@@ -511,6 +524,7 @@ const styles = StyleSheet.create({
     borderColor: palette.heading,
   },
   radiusText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 12,
     fontWeight: '600',
@@ -526,6 +540,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   resultsLocation: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 12,
   },
@@ -540,11 +555,13 @@ const styles = StyleSheet.create({
     marginVertical: spacing.md,
   },
   stateText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 14,
     textAlign: 'center',
   },
   emptyTitle: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 17,
     fontWeight: '700',
@@ -563,6 +580,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   expandText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '700',
@@ -576,12 +594,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   switchCityText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 13,
     fontWeight: '700',
     paddingHorizontal: 4,
   },
   errorText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.danger,
     fontSize: 14,
     textAlign: 'center',
@@ -595,6 +615,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   retryText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 13,
     fontWeight: '600',

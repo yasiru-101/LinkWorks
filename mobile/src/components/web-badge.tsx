@@ -1,3 +1,11 @@
+/**
+ * LinkWorks Platform Version & Framework Badge
+ * 
+ * Owned by: Bhashitha (Design system & UI branding)
+ * 
+ * Displays runtime platform and framework release information on web and preview surfaces.
+ */
+
 import { version } from 'expo/package.json';
 import { Image } from 'expo-image';
 import { useColorScheme, StyleSheet } from 'react-native';
@@ -7,6 +15,7 @@ import { ThemedView } from './themed-view';
 
 import { Spacing } from '@/constants/theme';
 
+// Informational footer badge displaying Expo framework version and brand badge
 export function WebBadge() {
   const scheme = useColorScheme();
 

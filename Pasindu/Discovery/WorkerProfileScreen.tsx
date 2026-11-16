@@ -456,6 +456,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 22,
     color: palette.primary,
     fontWeight: '700',
@@ -477,6 +478,7 @@ const styles = StyleSheet.create({
     borderColor: '#e2ece7',
   },
   reportIconText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
   },
   heroCard: {
@@ -546,6 +548,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   verifiedIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#055b49',
     fontSize: 11,
     fontWeight: '800',
@@ -712,6 +715,7 @@ const styles = StyleSheet.create({
     borderColor: '#e2ece7',
   },
   portfolioIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 20,
   },
   portfolioTitle: {
@@ -764,6 +768,7 @@ const styles = StyleSheet.create({
     color: palette.heading,
   },
   reviewStars: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#f59e0b',
     fontSize: 12,
   },
@@ -790,6 +795,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   privacyShieldIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 18,
   },
   privacyNoticeText: {
@@ -811,6 +817,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   messageCTAText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 15,
     fontWeight: '700',
     color: palette.primary,

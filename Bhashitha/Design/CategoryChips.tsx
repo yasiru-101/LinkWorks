@@ -100,6 +100,7 @@ const styles = StyleSheet.create({
     borderColor: palette.primary,
   },
   icon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 14,
   },
   text: {

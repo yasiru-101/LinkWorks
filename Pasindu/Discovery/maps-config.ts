@@ -1,3 +1,15 @@
+/**
+ * LinkWorks Map Projection & Google Maps Navigation Engine
+ * 
+ * Owner: Pasindu (Categories, location service, nearby worker discovery, search, public worker profiles, optional map)
+ * 
+ * This module powers the spatial projection and navigation features of the LinkWorks marketplace:
+ * 1. Web Mercator Projection: Converts physical GPS coordinates into 2D pixel coordinates for exact marker placement.
+ * 2. Slippy Map Tile Math: Calculates OpenStreetMap/CartoDB/ArcGIS tile coordinates (X, Y, Zoom) and fractional offsets.
+ * 3. Google Static Maps API: Constructs signed static imagery requests when an API key is provided.
+ * 4. Deep-Link Navigation: Triggers native Android/iOS turn-by-turn driving directions to workers via Google Maps intent.
+ */
+
 import { Linking, Platform } from 'react-native';
 
 // Google Cloud Maps configuration.

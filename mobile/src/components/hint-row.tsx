@@ -1,3 +1,11 @@
+/**
+ * LinkWorks Informational Hint Row Component
+ * 
+ * Owned by: Bhashitha (Design system & UI components)
+ * 
+ * Renders a compact key-value instructional row used in onboarding and configuration cards.
+ */
+
 import type { ReactNode } from 'react';
 import { View, StyleSheet } from 'react-native';
 
@@ -11,6 +19,7 @@ type HintRowProps = {
   hint?: ReactNode;
 };
 
+// Informational snippet row displaying a descriptive title and highlighted code/action hint
 export function HintRow({ title = 'Try editing', hint = 'app/index.tsx' }: HintRowProps) {
   return (
     <View style={styles.stepRow}>

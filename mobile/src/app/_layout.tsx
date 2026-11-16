@@ -1,6 +1,9 @@
 /**
  * LinkWorks Root Application Layout & Guarded Route Stack
  * 
+ * Framework path: `mobile/src/app/_layout.tsx`
+ * Owned by: Yasiru (Authentication routing) & Bhashitha (Design system, typography & root navigation)
+ * 
  * Framework-required root layout (`mobile/src/app/_layout.tsx`):
  * 1. Font Asset Loading: Asynchronously registers brand typeface `PlusJakartaSans`.
  * 2. Provider Hierarchy: Wraps application in `SafeAreaProvider`, `AuthProvider`, and `SearchCenterProvider`.
@@ -13,10 +16,10 @@
  */
 
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { ActivityIndicator, Pressable, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../../../Yasiru/Auth/AuthContext';
 import { ensureFirebaseApp } from '../../../Yasiru/Auth/firebase';
@@ -41,7 +44,7 @@ function ProtectedStack() {
       <View style={{ flex: 1, backgroundColor: '#ffffff', justifyContent: 'center', alignItems: 'center', padding: 24, gap: 16 }}>
         <Text accessibilityRole="alert" style={{ textAlign: 'center', color: '#dc2626' }}>Could not load your account: {error}</Text>
         <Pressable accessibilityRole="button" onPress={() => { void refreshProfile(); }} style={{ padding: 12, backgroundColor: '#034e3f', borderRadius: 8 }}>
-          <Text style={{ color: '#ffffff', fontWeight: 'bold' }}>Retry</Text>
+          <Text style={{ fontFamily: 'Plus Jakarta Sans', color: '#ffffff', fontWeight: 'bold' }}>Retry</Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => { void signOut(); }} style={{ padding: 8 }}>
           <Text style={{ color: '#6b7280' }}>Sign out</Text>
@@ -87,15 +90,15 @@ function ProtectedStack() {
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
   return (
     <View style={{ flex: 1, backgroundColor: '#ffffff', justifyContent: 'center', alignItems: 'center', padding: 24, gap: 16 }}>
-      <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#111827' }}>Application Notice</Text>
-      <Text style={{ fontSize: 13, color: '#dc2626', textAlign: 'center', lineHeight: 20 }}>
+      <Text style={{ fontFamily: 'Plus Jakarta Sans', fontSize: 18, fontWeight: 'bold', color: '#111827' }}>Application Notice</Text>
+      <Text style={{ fontFamily: 'Plus Jakarta Sans', fontSize: 13, color: '#dc2626', textAlign: 'center', lineHeight: 20 }}>
         {error?.message || String(error)}
       </Text>
       <Pressable
         accessibilityRole="button"
         onPress={retry}
         style={{ paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#034e3f', borderRadius: 8 }}>
-        <Text style={{ color: '#ffffff', fontWeight: 'bold' }}>Try Again</Text>
+        <Text style={{ fontFamily: 'Plus Jakarta Sans', color: '#ffffff', fontWeight: 'bold' }}>Try Again</Text>
       </Pressable>
     </View>
   );
@@ -103,13 +106,16 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
 
 // Load the brand font once, guard against font loading exceptions, and provide the native session to every route.
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   // Load custom typography with both completion and error tracking.
   // Checking fontError prevents permanent blank white screens if a font asset fails on physical devices.
-  const [fontsLoaded, fontError] = useFonts({
-    'Plus Jakarta Sans': require('../../assets/fonts/PlusJakartaSans.ttf'),
-  });
+  // Android gets real per-weight font files from the expo-font plugin in app.json, because it cannot
+  // apply fontWeight to a variable font loaded at runtime. Loading the variable file here would replace
+  // that native family, so Android skips it; web and iOS still use the variable font.
+  const [fontsLoaded, fontError] = useFonts(
+    Platform.OS === 'android'
+      ? {}
+      : { 'Plus Jakarta Sans': require('../../assets/fonts/PlusJakartaSans.ttf') }
+  );
 
   // Eagerly ensure Firebase default app instance is ready inside an effect with exception guarding.
   // Running this in an effect rather than raw render prevents native startup delays from crashing the component tree.
@@ -141,7 +147,9 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      {/* The LinkWorks screens are designed light-only, so navigation always uses the light theme.
+          Following the phone's dark mode would put dark navigation backgrounds behind light screens. */}
+      <ThemeProvider value={DefaultTheme}>
         <AuthProvider>
           <SearchCenterProvider>
             <ProtectedStack />

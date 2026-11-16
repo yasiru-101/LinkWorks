@@ -140,6 +140,7 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   tabBarLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 11,
     fontWeight: '700',
     marginTop: 2,
@@ -156,6 +157,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#e8f5ee',
   },
   iconText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
   },
 });

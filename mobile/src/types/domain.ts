@@ -1,7 +1,9 @@
 /**
  * LinkWorks Core Domain Data Contracts
  * 
- * Shared TypeScript type definitions across client, worker, and backend services:
+ * Owner: Shared Data Contracts (Yasiru, Pasindu, Thimanya, Chanuli, Bhashitha)
+ * 
+ * Defines TypeScript data types representing core entities across the marketplace:
  * 1. User Roles: `client` (job poster) and `worker` (skilled tradesperson).
  * 2. Job Lifecycles: `open` -> `assigned` -> `in_progress` -> `completed` / `cancelled`.
  * 3. Quote Applications: `submitted`, `accepted`, `rejected`, `withdrawn`.
@@ -9,16 +11,23 @@
  * 5. Entities: `UserProfile`, `WorkerProfile`, `Job`, `JobApplication`, `Chat`.
  */
 
+// Active persona mode for dual-role users (Client seeking services vs Worker fulfilling tasks).
 export type UserRole = 'client' | 'worker';
+
+// Finite state machine statuses representing a job's complete commercial lifecycle.
 export type JobStatus = 'open' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
+
+// Workflow statuses for bids submitted by skilled tradespeople.
 export type ApplicationStatus = 'submitted' | 'accepted' | 'rejected' | 'withdrawn';
 
+// Geographic location structure pairing WGS-84 coordinates with an indexed geohash for radius querying.
 export type Coordinates = {
   lat: number;
   lng: number;
   geohash: string;
 };
 
+// Root user account profile stored in Firestore `users/{userId}`.
 export type UserProfile = {
   name: string;
   phone: string;
@@ -30,6 +39,7 @@ export type UserProfile = {
   isBlocked?: boolean;
 };
 
+// Public discovery profile for skilled tradespeople stored in Firestore `workers/{workerId}`.
 export type WorkerProfile = {
   userId: string;
   displayName: string;
@@ -47,6 +57,7 @@ export type WorkerProfile = {
   jobsCompleted: number;
 };
 
+// Open or contracted trade job published by a client stored in Firestore `jobs/{jobId}`.
 export type Job = {
   clientId: string;
   title: string;
@@ -65,6 +76,7 @@ export type Job = {
   city?: string;
 };
 
+// Quote application / bid record created by a tradesperson in `jobs/{jobId}/applications/{workerId}`.
 export type JobApplication = {
   workerId: string;
   message: string;
@@ -72,6 +84,7 @@ export type JobApplication = {
   status: ApplicationStatus;
 };
 
+// Real-time message exchange between client and contracted worker in `chats/{chatId}/messages/{msgId}`.
 export type ChatMessage = {
   senderId: string;
   text: string;
@@ -79,6 +92,7 @@ export type ChatMessage = {
   readBy: string[];
 };
 
+// Rating and feedback record submitted following job completion in `reviews/{reviewId}`.
 export type Review = {
   jobId: string;
   raterId: string;
@@ -87,6 +101,7 @@ export type Review = {
   text: string;
 };
 
+// Trust & Safety dispute report submitted for moderation review in `reports/{reportId}`.
 export type Report = {
   reporterId: string;
   targetId: string;

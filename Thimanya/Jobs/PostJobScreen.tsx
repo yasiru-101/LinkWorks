@@ -305,6 +305,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   backText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 15,
     fontWeight: '700',
@@ -316,6 +317,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Plus Jakarta Sans',
   },
   sectionLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 14,
     fontWeight: '600',
@@ -342,6 +344,7 @@ const styles = StyleSheet.create({
     borderColor: palette.primary,
   },
   chipText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 13,
     color: palette.heading,
     fontWeight: '700',
@@ -368,6 +371,7 @@ const styles = StyleSheet.create({
     borderColor: '#86efac',
   },
   gpsDetectText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 13,
     fontWeight: '700',
     color: '#166534',

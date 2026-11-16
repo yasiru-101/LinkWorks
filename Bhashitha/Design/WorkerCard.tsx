@@ -168,6 +168,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   verifiedIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#055b49',
     fontSize: 10,
     fontWeight: '800',
@@ -245,6 +246,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   ratingStar: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#f59e0b',
     fontSize: 13,
   },
@@ -260,6 +262,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Plus Jakarta Sans',
   },
   dotSeparator: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#8da49c',
     fontSize: 10,
   },

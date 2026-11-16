@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 const appPackage = new URL('../../mobile/package.json', import.meta.url);
 const appRequire = createRequire(fileURLToPath(appPackage));
 const { initializeTestEnvironment, assertFails, assertSucceeds } = appRequire('@firebase/rules-unit-testing');
-const { collection, doc, getDoc, getDocs, orderBy, query, setDoc, startAt, endAt, updateDoc, serverTimestamp, where } = appRequire('firebase/firestore');
+const { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, setDoc, startAt, endAt, updateDoc, serverTimestamp, where } = appRequire('firebase/firestore');
 const rules = readFileSync(new URL('../../mobile/firestore.rules', import.meta.url), 'utf8');
 
 // Run against the isolated demo project started by firebase emulators:exec.
@@ -119,6 +119,10 @@ try {
   await assertSucceeds(setDoc(jobThreeRef, jobThreeData));
   await assertSucceeds(setDoc(doc(worker, 'jobs/job-three/applications/worker'), { ...application, status: 'submitted' }));
   await assertSucceeds(updateDoc(doc(worker, 'jobs/job-three/applications/worker'), { status: 'withdrawn', updatedAt: serverTimestamp() }));
+  // Stranger cannot delete worker's application
+  await assertFails(deleteDoc(doc(stranger, 'jobs/job-three/applications/worker')));
+  // Worker can delete their own withdrawn application
+  await assertSucceeds(deleteDoc(doc(worker, 'jobs/job-three/applications/worker')));
 
   // Test quote acceptance and full job lifecycle on job-four
   const jobFourRef = doc(owner, 'jobs/job-four');

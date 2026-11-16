@@ -10,10 +10,10 @@
  * 4. Quote Withdrawal: Allows workers to retract active quotes prior to client assignment.
  */
 
-import { collectionGroup, getDoc, getDocs, query, where, doc, updateDoc, serverTimestamp } from '@react-native-firebase/firestore';
+import { collectionGroup, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, updateDoc, where } from '@react-native-firebase/firestore';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Action, Status } from '../../Bhashitha/Design/Primitives';
 import { palette, spacing } from '../../Bhashitha/Design/theme';
@@ -54,6 +54,7 @@ export default function MyApplicationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [busyJobId, setBusyJobId] = useState<string | null>(null);
 
   // Load worker's applications across all jobs using collectionGroup directly from Cloud Firestore.
   const loadApplications = useCallback(async () => {
@@ -117,20 +118,65 @@ export default function MyApplicationsScreen() {
     void loadApplications();
   };
 
-  // Withdraw a submitted quote before assignment directly on Cloud Firestore.
-  async function withdrawQuote(jobId: string) {
-    if (!user) return;
-    try {
-      await updateDoc(doc(getSafeFirestore(), 'jobs', jobId, 'applications', user.uid), {
-        status: 'withdrawn',
-        updatedAt: serverTimestamp(),
-      });
-      setApplications((prev) =>
-        prev.map((app) => (app.jobId === jobId ? { ...app, status: 'withdrawn' } : app))
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not withdraw quote.');
-    }
+  // Withdraw quote with confirmation dialog so workers don't accidentally forfeit active bids.
+  function confirmWithdrawQuote(jobId: string) {
+    Alert.alert(
+      'Withdraw Quote',
+      'Are you sure you want to withdraw your quote for this job? The client will no longer be able to accept it.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Withdraw',
+          style: 'destructive',
+          onPress: async () => {
+            if (!user) return;
+            try {
+              setBusyJobId(jobId);
+              setError(null);
+              await updateDoc(doc(getSafeFirestore(), 'jobs', jobId, 'applications', user.uid), {
+                status: 'withdrawn',
+                updatedAt: serverTimestamp(),
+              });
+              setApplications((prev) =>
+                prev.map((app) => (app.jobId === jobId ? { ...app, status: 'withdrawn' } : app))
+              );
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Could not withdraw quote.');
+            } finally {
+              setBusyJobId(null);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  // Permanently delete a quote document from Firestore with confirmation.
+  function confirmDeleteQuote(jobId: string) {
+    Alert.alert(
+      'Delete Quote',
+      'Are you sure you want to permanently delete this quote record?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!user) return;
+            try {
+              setBusyJobId(jobId);
+              setError(null);
+              await deleteDoc(doc(getSafeFirestore(), 'jobs', jobId, 'applications', user.uid));
+              setApplications((prev) => prev.filter((app) => app.jobId !== jobId));
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Could not delete quote.');
+            } finally {
+              setBusyJobId(null);
+            }
+          },
+        },
+      ]
+    );
   }
 
   return (
@@ -209,10 +255,22 @@ export default function MyApplicationsScreen() {
                   {app.status === 'submitted' ? (
                     <Pressable
                       accessibilityRole="button"
-                      onPress={() => { void withdrawQuote(app.jobId); }}
-                      style={styles.withdrawButton}
+                      disabled={busyJobId === app.jobId}
+                      onPress={() => confirmWithdrawQuote(app.jobId)}
+                      style={[styles.withdrawButton, busyJobId === app.jobId && { opacity: 0.5 }]}
                     >
-                      <Text style={styles.withdrawButtonText}>Withdraw Quote</Text>
+                      <Text style={styles.withdrawButtonText}>Withdraw</Text>
+                    </Pressable>
+                  ) : null}
+
+                  {app.status !== 'accepted' ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={busyJobId === app.jobId}
+                      onPress={() => confirmDeleteQuote(app.jobId)}
+                      style={[styles.deleteButton, busyJobId === app.jobId && { opacity: 0.5 }]}
+                    >
+                      <Text style={styles.deleteButtonText}>🗑 Delete</Text>
                     </Pressable>
                   ) : null}
 
@@ -221,7 +279,7 @@ export default function MyApplicationsScreen() {
                     onPress={() => router.push({ pathname: '/job/[id]', params: { id: app.jobId } })}
                     style={styles.viewJobButton}
                   >
-                    <Text style={styles.viewJobText}>View Job Details →</Text>
+                    <Text style={styles.viewJobText}>View Details →</Text>
                   </Pressable>
                 </View>
               </View>
@@ -247,6 +305,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   eyebrow: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 11,
     fontWeight: '800',
@@ -273,6 +332,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   category: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 11,
     fontWeight: '800',
@@ -290,6 +350,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   statusText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -299,15 +360,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   priceLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 13,
   },
   priceValue: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 17,
     fontWeight: '800',
   },
   pitchText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#344454',
     fontSize: 13,
     lineHeight: 18,
@@ -329,6 +393,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   chatButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '700',
@@ -338,7 +403,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   withdrawButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.danger,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  deleteButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
+    color: '#b42318',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -347,6 +423,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   viewJobText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.primary,
     fontSize: 13,
     fontWeight: '700',
@@ -362,6 +439,7 @@ const styles = StyleSheet.create({
     marginVertical: spacing.md,
   },
   stateText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 14,
     textAlign: 'center',
@@ -374,6 +452,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Plus Jakarta Sans',
   },
   errorText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.danger,
     fontSize: 14,
     textAlign: 'center',

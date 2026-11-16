@@ -1,3 +1,11 @@
+/**
+ * LinkWorks Collapsible Accordion Disclosure Component
+ * 
+ * Owned by: Bhashitha (Design system & UI components)
+ * 
+ * Renders an expandable disclosure panel with animated chevron indicator and fade transitions.
+ */
+
 import { SymbolView } from 'expo-symbols';
 import { PropsWithChildren, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
@@ -8,6 +16,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+// Expandable accordion container toggling nested children visibility on tap
 export function Collapsible({ children, title }: PropsWithChildren & { title: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const theme = useTheme();

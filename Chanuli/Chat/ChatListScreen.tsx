@@ -243,6 +243,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   searchIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 15,
     marginRight: 8,
   },
@@ -254,6 +255,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   clearSearch: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     color: palette.muted,
     fontWeight: '700',
@@ -394,6 +396,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptyIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 32,
   },
   emptyTitle: {

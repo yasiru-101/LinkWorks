@@ -14,6 +14,7 @@
 // These city centers provide an explicit fallback when foreground location is unavailable.
 export const CITY_CENTERS = {
   Colombo: { lat: 6.9271, lng: 79.8612 },
+  Kelaniya: { lat: 6.9536, lng: 79.9167 },
   Gampaha: { lat: 7.0917, lng: 79.9997 },
   Moratuwa: { lat: 6.773, lng: 79.8816 },
   Negombo: { lat: 7.2083, lng: 79.8358 },

@@ -730,6 +730,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   subtitle: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 14,
     lineHeight: 20,
@@ -754,6 +755,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Plus Jakarta Sans',
   },
   cardSubtitle: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 13,
     lineHeight: 18,
@@ -796,6 +798,7 @@ const styles = StyleSheet.create({
     borderColor: palette.border,
   },
   cameraIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 11,
   },
   avatarInfo: {
@@ -803,6 +806,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   phoneLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 12,
     fontWeight: '600',
@@ -814,6 +818,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   phoneValue: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 15,
     fontWeight: '700',
@@ -825,6 +830,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   verifiedText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.brand,
     fontSize: 11,
     fontWeight: '700',
@@ -833,6 +839,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   inputLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 14,
     fontWeight: '700',
@@ -841,6 +848,7 @@ const styles = StyleSheet.create({
     color: palette.danger,
   },
   textInput: {
+    fontFamily: 'Plus Jakarta Sans',
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 12,
@@ -868,11 +876,13 @@ const styles = StyleSheet.create({
     borderColor: palette.brand,
   },
   cityChipText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 13,
     color: palette.body,
     fontWeight: '600',
   },
   cityChipTextSelected: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.brand,
     fontWeight: '700',
   },
@@ -901,6 +911,7 @@ const styles = StyleSheet.create({
     borderColor: palette.border,
   },
   roleCardIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 22,
   },
   roleCardBody: {
@@ -927,11 +938,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   selectedRadioCheck: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '800',
   },
   roleCardDescription: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 13,
     lineHeight: 18,
@@ -941,6 +954,7 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   workerSectionBadge: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.brand,
     fontSize: 12,
     fontWeight: '800',
@@ -963,18 +977,22 @@ const styles = StyleSheet.create({
     borderColor: palette.brand,
   },
   tradeChipIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 14,
   },
   tradeChipText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 13,
     color: palette.body,
     fontWeight: '600',
   },
   tradeChipTextSelected: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.brand,
     fontWeight: '700',
   },
   tradeChipCheck: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.brand,
     fontSize: 12,
     fontWeight: '800',
@@ -984,6 +1002,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   customSkillInput: {
+    fontFamily: 'Plus Jakarta Sans',
     flex: 1,
     borderWidth: 1,
     borderColor: palette.border,
@@ -1002,11 +1021,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addSkillButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
   },
   quickSuggestionLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 12,
     fontWeight: '600',
@@ -1029,6 +1050,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   suggestionChipText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     color: palette.muted,
     fontWeight: '600',
@@ -1045,6 +1067,7 @@ const styles = StyleSheet.create({
     borderColor: '#e8f0ec',
   },
   activeSkillsLabel: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.brand,
     fontSize: 13,
     fontWeight: '700',
@@ -1062,6 +1085,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   activeSkillText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.brand,
     fontSize: 12,
     fontWeight: '700',
@@ -1075,6 +1099,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   removeSkillText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.danger,
     fontSize: 13,
     fontWeight: '800',
@@ -1094,12 +1119,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   rateCurrency: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 14,
     fontWeight: '700',
     color: palette.muted,
     marginRight: 4,
   },
   rateInput: {
+    fontFamily: 'Plus Jakarta Sans',
     flex: 1,
     paddingVertical: 12,
     fontSize: 15,
@@ -1107,6 +1134,7 @@ const styles = StyleSheet.create({
     color: palette.heading,
   },
   rateSuffix: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 12,
     fontWeight: '600',
     color: palette.muted,
@@ -1125,15 +1153,18 @@ const styles = StyleSheet.create({
     borderColor: palette.brand,
   },
   radiusChipText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 13,
     color: palette.body,
     fontWeight: '600',
   },
   radiusChipTextSelected: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.brand,
     fontWeight: '700',
   },
   bioInput: {
+    fontFamily: 'Plus Jakarta Sans',
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 12,
@@ -1156,9 +1187,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   errorIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
   },
   errorText: {
+    fontFamily: 'Plus Jakarta Sans',
     flex: 1,
     color: palette.danger,
     fontSize: 13,
@@ -1200,6 +1233,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   signOutText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 14,
     fontWeight: '600',

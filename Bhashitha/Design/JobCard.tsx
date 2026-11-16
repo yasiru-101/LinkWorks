@@ -91,19 +91,10 @@ export function JobCard({
         )}
       </View>
 
-      {/* Footer: Preferred Timing & Quotes Count */}
+      {/* Footer: View Details Action */}
       <View style={styles.footer}>
-        <Text style={styles.preferredDate}>
-          📅 {job.preferredDate ? `Needed by ${job.preferredDate}` : 'Flexible timing'}
-        </Text>
-
-        <View style={styles.applyActionRow}>
-          <Text style={styles.quotesCount}>
-            {job.applicationCount || 0} quotes
-          </Text>
-          <View style={styles.applyButtonPill}>
-            <Text style={styles.applyButtonText}>Details →</Text>
-          </View>
+        <View style={styles.applyButtonPill}>
+          <Text style={styles.applyButtonText}>Details →</Text>
         </View>
       </View>
     </Pressable>
@@ -220,39 +211,24 @@ const styles = StyleSheet.create({
     color: palette.muted,
     fontWeight: '600',
   },
+  // Footer row: right-aligns the action button ("Details →")
   footer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#f0f5f2',
   },
-  preferredDate: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 11,
-    color: '#657e76',
-  },
-  applyActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  quotesCount: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 11,
-    color: palette.muted,
-    fontWeight: '600',
-  },
   applyButtonPill: {
     backgroundColor: '#eaf4f0',
     borderRadius: 100,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   applyButtonText: {
     fontFamily: 'Plus Jakarta Sans',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: palette.primary,
   },

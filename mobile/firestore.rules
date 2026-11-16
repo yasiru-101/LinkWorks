@@ -235,7 +235,14 @@ service cloud.firestore {
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
               && request.resource.data.updatedAt == request.time)
           );
-        allow delete: if false;
+        allow delete: if signedIn()
+          && (
+            // Worker deletes their own unaccepted quote (submitted, withdrawn, rejected)
+            (owns(workerId) && resource.data.status in ['submitted', 'withdrawn', 'rejected'])
+            ||
+            // Client removes/declines a quote on their open job
+            (request.auth.uid == parentJob().clientId && parentJob().status == 'open')
+          );
       }
     }
 

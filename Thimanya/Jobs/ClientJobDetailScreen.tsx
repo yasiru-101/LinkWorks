@@ -87,18 +87,43 @@ export default function ClientJobDetailScreen() {
       const currentJob = { ...(snapshot.data() as Job), id: snapshot.id };
       setJob(currentJob);
 
-      // 2. Fetch quote applications subcollection
-      const appsSnap = await getDocs(collection(db, 'jobs', id, 'applications'));
+      // 2. Fetch quote applications with role-based security compliance.
+      // Firestore security rules only permit the job owner (client) to list all applications.
+      // Other accounts (such as a worker viewing from the Job Feed) may only read their own quote.
+      const isJobOwner = user ? currentJob.clientId === user.uid : false;
       const apps: DetailedApplication[] = [];
-      for (const d of appsSnap.docs) {
-        const data = d.data() as DetailedApplication;
-        apps.push({
-          ...data,
-          workerId: data.workerId || d.id,
-          workerName: data.workerName || 'Verified Tradesperson',
-          ratingAvg: data.ratingAvg || 0,
-          ratingCount: data.ratingCount || 0,
-        });
+
+      try {
+        if (isJobOwner) {
+          // Client reviewing bids on their posted job
+          const appsSnap = await getDocs(collection(db, 'jobs', id, 'applications'));
+          for (const d of appsSnap.docs) {
+            const data = d.data() as DetailedApplication;
+            apps.push({
+              ...data,
+              workerId: data.workerId || d.id,
+              workerName: data.workerName || 'Verified Tradesperson',
+              ratingAvg: data.ratingAvg || 0,
+              ratingCount: data.ratingCount || 0,
+            });
+          }
+        } else if (user) {
+          // Worker viewing an open job: retrieve only their own submitted quote if present
+          const myAppSnap = await getDocFromServer(doc(db, 'jobs', id, 'applications', user.uid));
+          if (myAppSnap.exists()) {
+            const data = myAppSnap.data() as DetailedApplication;
+            apps.push({
+              ...data,
+              workerId: data.workerId || user.uid,
+              workerName: data.workerName || profile?.name || 'You',
+              ratingAvg: data.ratingAvg || 0,
+              ratingCount: data.ratingCount || 0,
+            });
+          }
+        }
+      } catch (appErr) {
+        // Non-fatal fallback: ensure job description and budget always display even if quote lookup fails
+        console.warn('Could not load applications for job:', appErr);
       }
       setApplications(apps);
 
@@ -126,7 +151,7 @@ export default function ClientJobDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, user, profile?.name]);
 
   useEffect(() => {
     void fetchJobAndQuotes();
@@ -241,6 +266,95 @@ export default function ClientJobDetailScreen() {
     } finally {
       setBusy(false);
     }
+  }
+
+  // Withdraw worker's own submitted quote on this job directly with confirmation
+  function withdrawMyQuote() {
+    if (!job || !user) return;
+    Alert.alert(
+      'Withdraw Quote',
+      'Are you sure you want to withdraw your quote for this job? The client will no longer be able to accept it.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Withdraw',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setBusy(true);
+              const firestore = getSafeFirestore();
+              await updateDoc(doc(firestore, 'jobs', job.id, 'applications', user.uid), {
+                status: 'withdrawn',
+                updatedAt: serverTimestamp(),
+              });
+              setApplications((prev) =>
+                prev.map((a) => (a.workerId === user.uid ? { ...a, status: 'withdrawn' } : a))
+              );
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Could not withdraw quote.');
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  // Permanently delete worker's own quote document on this job with confirmation
+  function deleteMyQuote() {
+    if (!job || !user) return;
+    Alert.alert(
+      'Delete Quote',
+      'Are you sure you want to permanently delete your quote application for this job?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setBusy(true);
+              const firestore = getSafeFirestore();
+              await deleteDoc(doc(firestore, 'jobs', job.id, 'applications', user.uid));
+              setApplications([]);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Could not delete quote.');
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  // Client declines and permanently removes an unwanted quote from their open job
+  function declineAndRemoveQuote(quote: DetailedApplication) {
+    if (!job || !user || job.clientId !== user.uid) return;
+    Alert.alert(
+      'Decline Quote',
+      `Are you sure you want to decline and remove the quote from ${quote.workerName || 'this worker'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Decline & Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setBusy(true);
+              const firestore = getSafeFirestore();
+              await deleteDoc(doc(firestore, 'jobs', job.id, 'applications', quote.workerId));
+              setApplications((prev) => prev.filter((a) => a.workerId !== quote.workerId));
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Could not remove quote.');
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ]
+    );
   }
 
   if (loading) {
@@ -446,16 +560,18 @@ export default function ClientJobDetailScreen() {
           <View style={styles.quotesSection}>
             <View style={styles.quotesHeaderRow}>
               <Text style={styles.sectionHeading}>
-                Quotes Received ({applications.length})
+                {isOwner ? `Quotes Received (${applications.length})` : 'Your Submitted Quote'}
               </Text>
-              <Text style={styles.sortPill}>Lowest Price First</Text>
+              {isOwner && <Text style={styles.sortPill}>Lowest Price First</Text>}
             </View>
 
             {applications.length === 0 ? (
               <View style={styles.emptyQuotesCard}>
-                <Text style={styles.emptyQuotesIcon}>⏳</Text>
+                <Text style={styles.emptyQuotesIcon}>{isOwner ? '⏳' : '📋'}</Text>
                 <Text style={styles.emptyQuotesText}>
-                  Waiting for quotes. Nearby verified {job.categoryId.toLowerCase()} tradespeople in your area are reviewing your request.
+                  {isOwner
+                    ? `Waiting for quotes. Nearby verified ${job.categoryId.toLowerCase()} tradespeople in your area are reviewing your request.`
+                    : `No quote submitted yet. Review the client's requirements and submit your price offer below.`}
                 </Text>
               </View>
             ) : (
@@ -501,34 +617,70 @@ export default function ClientJobDetailScreen() {
                       <Text style={styles.pitchMessageText}>"{quote.message}"</Text>
                     </View>
 
-                    {/* Action: Accept Quote & Hire */}
-                    {isClient && (
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => { void acceptQuote(quote); }}
-                        disabled={busy}
-                        style={({ pressed }) => [
-                          styles.hireButton,
-                          isRecommended ? styles.hireButtonPrimary : styles.hireButtonSecondary,
-                          pressed && { opacity: 0.85 },
-                        ]}
-                      >
-                        {busy ? (
-                          <ActivityIndicator color="#ffffff" />
-                        ) : (
-                          <>
-                            <Text
-                              style={[
-                                styles.hireButtonText,
-                                !isRecommended && styles.hireButtonSecondaryText,
-                              ]}
-                            >
-                              Accept Quote &amp; Hire {quote.workerName?.split(' ')[0] || 'Tradesperson'}
-                            </Text>
-                            <Image source={arrow} style={styles.arrowIcon} />
-                          </>
+                    {/* Worker Quote Actions (Withdraw, Delete) */}
+                    {!isClient && (
+                      <View style={styles.workerQuoteActionsRow}>
+                        {quote.status === 'submitted' && (
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={withdrawMyQuote}
+                            disabled={busy}
+                            style={styles.quoteWithdrawBtn}
+                          >
+                            <Text style={styles.quoteWithdrawBtnText}>Withdraw Quote</Text>
+                          </Pressable>
                         )}
-                      </Pressable>
+                        {quote.status !== 'accepted' && (
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={deleteMyQuote}
+                            disabled={busy}
+                            style={styles.quoteDeleteBtn}
+                          >
+                            <Text style={styles.quoteDeleteBtnText}>🗑 Delete Quote</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Action: Accept Quote & Hire / Decline for Client */}
+                    {isClient && isOwner && (
+                      <View style={{ gap: 8, marginTop: 8 }}>
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => { void acceptQuote(quote); }}
+                          disabled={busy}
+                          style={({ pressed }) => [
+                            styles.hireButton,
+                            isRecommended ? styles.hireButtonPrimary : styles.hireButtonSecondary,
+                            pressed && { opacity: 0.85 },
+                          ]}
+                        >
+                          {busy ? (
+                            <ActivityIndicator color="#ffffff" />
+                          ) : (
+                            <>
+                              <Text
+                                style={[
+                                  styles.hireButtonText,
+                                  !isRecommended && styles.hireButtonSecondaryText,
+                                ]}
+                              >
+                                Accept Quote &amp; Hire {quote.workerName?.split(' ')[0] || 'Tradesperson'}
+                              </Text>
+                              <Image source={arrow} style={styles.arrowIcon} />
+                            </>
+                          )}
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => declineAndRemoveQuote(quote)}
+                          disabled={busy}
+                          style={styles.declineQuoteBtn}
+                        >
+                          <Text style={styles.declineQuoteBtnText}>✕ Decline &amp; Remove Quote</Text>
+                        </Pressable>
+                      </View>
                     )}
                   </View>
                 );
@@ -541,7 +693,11 @@ export default function ClientJobDetailScreen() {
                 onPress={() => setApplyModalVisible(true)}
                 style={styles.workerApplyBtn}
               >
-                <Text style={styles.workerApplyBtnText}>📝 Submit Your Quote for this Job</Text>
+                <Text style={styles.workerApplyBtnText}>
+                  {applications.length > 0
+                    ? (applications[0]?.status === 'withdrawn' ? '📝 Re-submit Quote' : '📝 Update Your Quote')
+                    : '📝 Submit Your Quote for this Job'}
+                </Text>
               </Pressable>
             )}
           </View>
@@ -625,6 +781,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 22,
     color: palette.primary,
     fontWeight: '700',
@@ -724,6 +881,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   detailsIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 14,
   },
   detailsText: {
@@ -902,6 +1060,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyQuotesIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 28,
   },
   emptyQuotesText: {
@@ -986,6 +1145,7 @@ const styles = StyleSheet.create({
     color: '#f59e0b',
   },
   metaDot: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 10,
     color: '#8aa096',
   },
@@ -1058,6 +1218,53 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     resizeMode: 'contain',
     tintColor: '#ffffff',
+  },
+  workerQuoteActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f5f3',
+  },
+  quoteWithdrawBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#fef3f2',
+    borderWidth: 1,
+    borderColor: '#fee4e2',
+  },
+  quoteWithdrawBtnText: {
+    fontFamily: 'Plus Jakarta Sans',
+    color: palette.danger,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  quoteDeleteBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#fff1f0',
+    borderWidth: 1,
+    borderColor: '#ffccc7',
+  },
+  quoteDeleteBtnText: {
+    fontFamily: 'Plus Jakarta Sans',
+    color: '#b42318',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  declineQuoteBtn: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  declineQuoteBtnText: {
+    fontFamily: 'Plus Jakarta Sans',
+    color: '#667085',
+    fontSize: 12,
+    fontWeight: '600',
   },
   workerApplyBtn: {
     backgroundColor: '#eaf4f0',

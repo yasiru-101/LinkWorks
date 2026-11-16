@@ -477,6 +477,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backButtonText: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 22,
     color: palette.primary,
     fontWeight: '700',
@@ -509,6 +510,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   phoneHighlight: {
+    fontFamily: 'Plus Jakarta Sans',
     fontWeight: '700',
     color: palette.heading,
   },
@@ -566,6 +568,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   flagEmoji: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 18,
   },
   countryCodeText: {
@@ -691,6 +694,7 @@ const styles = StyleSheet.create({
     tintColor: '#ffffff',
   },
   arrowGlyph: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#ffffff',
     fontSize: 18,
     fontWeight: '700',
@@ -716,6 +720,7 @@ const styles = StyleSheet.create({
     borderColor: '#fee4e2',
   },
   messageIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 16,
     lineHeight: 20,
   },
@@ -739,6 +744,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   shieldIcon: {
+    fontFamily: 'Plus Jakarta Sans',
     fontSize: 18,
   },
   trustText: {

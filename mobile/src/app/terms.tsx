@@ -34,7 +34,7 @@ export default function TermsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionHeading}>1. Purpose &amp; Scope</Text>
           <Text style={styles.paragraph}>
-            LinkWorks is an on-demand skilled labor marketplace operating across Sri Lanka (Colombo, Moratuwa, Kandy, Galle, Gampaha, and Negombo). We connect clients seeking trade services (plumbing, carpentry, electrical, masonry, painting, AC repair) with verified independent tradespeople.
+            LinkWorks is an on-demand skilled labor marketplace operating across Sri Lanka (Colombo, Kelaniya, Kandy, Galle, Gampaha, and Negombo). We connect clients seeking trade services (plumbing, carpentry, electrical, masonry, painting, AC repair) with verified independent tradespeople.
           </Text>
         </View>
 
@@ -100,11 +100,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
   backText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.brand,
     fontSize: 16,
     fontWeight: '700',
   },
   headerTitle: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 17,
     fontWeight: '700',
@@ -124,6 +126,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Plus Jakarta Sans',
   },
   lastUpdated: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.muted,
     fontSize: 13,
     marginBottom: spacing.xs,
@@ -132,11 +135,13 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   sectionHeading: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.heading,
     fontSize: 17,
     fontWeight: '700',
   },
   paragraph: {
+    fontFamily: 'Plus Jakarta Sans',
     color: palette.body,
     fontSize: 15,
     lineHeight: 22,
@@ -150,6 +155,7 @@ const styles = StyleSheet.create({
     borderColor: '#bbf7d0',
   },
   footerText: {
+    fontFamily: 'Plus Jakarta Sans',
     color: '#166534',
     fontSize: 14,
     lineHeight: 20,

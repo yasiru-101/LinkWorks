@@ -1,3 +1,11 @@
+/**
+ * LinkWorks Web Animated Splash & Logo Components
+ * 
+ * Owned by: Bhashitha (Design system & UI branding)
+ * 
+ * Implements lightweight CSS and Reanimated keyframe transitions optimized for web browsers.
+ */
+
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Keyframe, Easing } from 'react-native-reanimated';
@@ -5,6 +13,7 @@ import Animated, { Keyframe, Easing } from 'react-native-reanimated';
 import classes from './animated-icon.module.css';
 const DURATION = 300;
 
+// Web-safe stub for native splash overlay (unneeded on browser DOM)
 export function AnimatedSplashOverlay() {
   return null;
 }
@@ -54,6 +63,7 @@ const glowKeyframe = new Keyframe({
   },
 });
 
+// Web-rendered animated icon featuring ambient glow rotation and elastic bounce scaling
 export function AnimatedIcon() {
   return (
     <View style={styles.iconContainer}>
