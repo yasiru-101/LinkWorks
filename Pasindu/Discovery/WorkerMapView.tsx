@@ -648,19 +648,20 @@ const styles = StyleSheet.create({
   },
   distancePill: {
     backgroundColor: '#f1f5f9',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#cbd5e1',
     marginTop: 2,
+    alignSelf: 'center',
   },
   distancePillSelected: {
     backgroundColor: '#dcfce7',
     borderColor: '#86efac',
   },
   distancePillText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
     color: '#475569',
   },
@@ -716,6 +717,7 @@ const styles = StyleSheet.create({
   previewNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
   },
   previewName: {
@@ -726,13 +728,13 @@ const styles = StyleSheet.create({
   verifiedTag: {
     backgroundColor: '#ecfdf5',
     paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingVertical: 2,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#a7f3d0',
   },
   verifiedTagText: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#065f46',
     fontWeight: '800',
   },
@@ -744,6 +746,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
     marginTop: 2,
   },
@@ -765,6 +768,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: palette.border,
     paddingTop: spacing.xs,
@@ -780,17 +785,20 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    flexShrink: 0,
   },
   directionsBtn: {
     backgroundColor: '#f0fdf4',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#bbf7d0',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   directionsBtnText: {
     color: '#15803d',
@@ -799,11 +807,12 @@ const styles = StyleSheet.create({
   },
   profileBtn: {
     backgroundColor: palette.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   profileBtnText: {
     color: '#ffffff',
