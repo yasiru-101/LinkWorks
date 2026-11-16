@@ -1,3 +1,13 @@
+/**
+ * LinkWorks Legal Terms & Community Safety Screen (`/terms`)
+ * 
+ * Framework path: `mobile/src/app/terms.tsx`
+ * Owned by: Yasiru & Bhashitha (Legal onboarding disclosures & moderation)
+ * 
+ * Outlines marketplace rules, safety standards, transparent whole-LKR pricing policies,
+ * dispute mediation, and zero-tolerance harassment rules for Sri Lankan clients and tradespeople.
+ */
+
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

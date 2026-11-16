@@ -1,3 +1,11 @@
+/**
+ * LinkWorks Fast In-Memory Demo Workers
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Compact static worker records used for unit test mocking and empty-state fallbacks.
+ */
+
 import { CITY_CENTERS, geohashForPoint } from '../../Pasindu/Discovery/geo';
 
 // Keep fictional nearby workers ready for query and empty-state testing.

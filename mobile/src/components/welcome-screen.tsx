@@ -1,3 +1,16 @@
+/**
+ * LinkWorks Welcome & Landing Screen Component
+ * 
+ * Framework path: `mobile/src/components/welcome-screen.tsx`
+ * Owned by: Yasiru (Phone authentication, onboarding) & Bhashitha (Design system)
+ * 
+ * First user-facing screen of LinkWorks:
+ * 1. Brand Visual: Responsive worker illustration adapting to phone and web aspect ratios.
+ * 2. Auth State Router: Automatically redirects authenticated users to their active home feed
+ *    or profile setup if incomplete.
+ * 3. Onboarding Actions: Quick entry points to Sign In (Phone OTP) or Create Account.
+ */
+
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';

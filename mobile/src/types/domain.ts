@@ -1,4 +1,14 @@
-/** Shared Firestore contract. Keep security rules and Functions in sync with changes here. */
+/**
+ * LinkWorks Core Domain Data Contracts
+ * 
+ * Shared TypeScript type definitions across client, worker, and backend services:
+ * 1. User Roles: `client` (job poster) and `worker` (skilled tradesperson).
+ * 2. Job Lifecycles: `open` -> `assigned` -> `in_progress` -> `completed` / `cancelled`.
+ * 3. Quote Applications: `submitted`, `accepted`, `rejected`, `withdrawn`.
+ * 4. Spatial Contracts: `Coordinates` with latitude, longitude, and base-32 geohash.
+ * 5. Entities: `UserProfile`, `WorkerProfile`, `Job`, `JobApplication`, `Chat`.
+ */
+
 export type UserRole = 'client' | 'worker';
 export type JobStatus = 'open' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
 export type ApplicationStatus = 'submitted' | 'accepted' | 'rejected' | 'withdrawn';

@@ -1,3 +1,14 @@
+/**
+ * User Blocklist & Safety Filtering Unit Tests
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Verifies moderation operations:
+ * 1. Blocking and unblocking user IDs.
+ * 2. Membership checking (`isUserBlocked`).
+ * 3. Cache clearing and persistence.
+ */
+
 import assert from 'node:assert/strict';
 
 // Test the in-memory fallback blocklist logic.

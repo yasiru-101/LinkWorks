@@ -1,3 +1,17 @@
+/**
+ * LinkWorks Root Application Layout & Guarded Route Stack
+ * 
+ * Framework-required root layout (`mobile/src/app/_layout.tsx`):
+ * 1. Font Asset Loading: Asynchronously registers brand typeface `PlusJakartaSans`.
+ * 2. Provider Hierarchy: Wraps application in `SafeAreaProvider`, `AuthProvider`, and `SearchCenterProvider`.
+ * 3. Route Access Guards (`ProtectedStack`):
+ *    - Public screens: `index` (Welcome) and `terms` (Legal conditions).
+ *    - Unauthenticated: `phone` (Phone OTP sign-in).
+ *    - Authenticated without profile: `setup-profile` (Name, city, and initial role choice).
+ *    - Worker setup required: `worker-setup` (Skills, day rate, and service coverage).
+ *    - Authenticated ready: `(main)` tab navigation and modal flows (`post-job`, `job/[id]`, `worker/[id]`, `chat/[id]`).
+ */
+
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { ActivityIndicator, Pressable, Text, useColorScheme, View } from 'react-native';

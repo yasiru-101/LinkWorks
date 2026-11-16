@@ -1,3 +1,14 @@
+/**
+ * LinkWorks Seed & Demonstration Dataset
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Provides canonical seed data for development, QA, and automated test runners:
+ * 1. Realistic Sri Lankan skilled workers across major cities (Colombo, Kandy, Galle, Moratuwa, Negombo).
+ * 2. Pre-calculated geographic base coordinates and geohashes matching `Pasindu/Discovery/geo.ts`.
+ * 3. Seed jobs spanning multiple trades with realistic pricing, client IDs, and descriptions.
+ */
+
 import { CITY_CENTERS, geohashForPoint } from '../../Pasindu/Discovery/geo';
 import type { Job, WorkerProfile } from '../../mobile/src/types/domain';
 

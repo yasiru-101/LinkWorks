@@ -1,3 +1,14 @@
+/**
+ * Cloud Firestore Database Seed Script
+ * 
+ * Owner: Bhashitha (Design system, navigation, reviews, moderation, seed data, integration and QA)
+ * 
+ * Populates Firestore with standard LinkWorks demo and testing documents:
+ * 1. `categories`: 8 canonical Sri Lankan trade categories with colors, icons, and descriptions.
+ * 2. `workerProfiles`: Verified fictional tradespeople with geohash indexing.
+ * 3. `jobs`: Sample client jobs across multiple statuses and locations.
+ */
+
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 

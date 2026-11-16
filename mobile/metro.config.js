@@ -1,3 +1,12 @@
+/**
+ * Metro Bundler Configuration for LinkWorks
+ * 
+ * Configures React Native / Expo asset and module resolution:
+ * 1. Watches parent root workspace folders (`Yasiru/`, `Pasindu/`, `Thimanya/`, `Chanuli/`, `Bhashitha/`).
+ * 2. Resolves shared packages strictly from `mobile/node_modules`.
+ * 3. Enforces single-instance React resolution to prevent multiple React copy runtime conflicts.
+ */
+
 const path = require('node:path');
 const { getDefaultConfig } = require('expo/metro-config');
 

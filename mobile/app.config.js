@@ -1,3 +1,11 @@
+/**
+ * Expo Dynamic Application Configuration
+ * 
+ * Injects environment-specific credentials and Google Play Services configuration:
+ * 1. Checks for local or CI-provided `google-services.json` file path.
+ * 2. Bridges native Firebase credentials into Expo Android build configuration.
+ */
+
 const { existsSync } = require('node:fs');
 const { join } = require('node:path');
 
