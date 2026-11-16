@@ -239,7 +239,11 @@ export default function ClientHomeScreen() {
           <WorkerMapView
             workers={workers}
             city={city}
+            userCoords={{ lat, lng }}
             radiusKm={radiusKm}
+            isGpsActive={isGpsActive}
+            isLocating={isLocating}
+            onRequestGps={requestDeviceLocation}
             onSelectWorker={(w) =>
               router.push({ pathname: '/worker/[id]', params: { id: w.userId } })
             }

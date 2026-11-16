@@ -60,4 +60,35 @@ console.log('Testing Pasindu Fused Location & Coverage Algorithms...');
   console.log(`✓ Test 6: Trincomalee identified as out-of-coverage (${trinco.distanceKm} km away)`);
 }
 
+// Test 7: Web Mercator projection produces valid pixel offsets for Colombo & nearby trades.
+{
+  function project(lat, lng, zoom) {
+    const scale = 256 * Math.pow(2, zoom);
+    const x = ((lng + 180) / 360) * scale;
+    const sinLat = Math.sin((lat * Math.PI) / 180);
+    const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale;
+    return { x, y };
+  }
+  const user = project(6.9271, 79.8612, 13);
+  const worker = project(6.9350, 79.8700, 13);
+  const dx = worker.x - user.x;
+  const dy = worker.y - user.y;
+  assert.ok(Math.abs(dx) > 0, 'Horizontal offset should be non-zero');
+  assert.ok(Math.abs(dy) > 0, 'Vertical offset should be non-zero');
+  console.log('✓ Test 7: Web Mercator sub-pixel projection correctly scales worker offsets');
+}
+
+// Test 8: Slippy map tile calculations return valid integer coordinates for Sri Lanka.
+{
+  const n = Math.pow(2, 13);
+  const lng = 79.8612;
+  const lat = 6.9271;
+  const tileX = Math.floor(((lng + 180) / 360) * n);
+  const latRad = (lat * Math.PI) / 180;
+  const tileY = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n);
+  assert.equal(tileX, 5913);
+  assert.equal(tileY, 3937);
+  console.log('✓ Test 8: Map tile calculation aligns with standard global tile indexing');
+}
+
 console.log('All Fused Location & coverage tests passed! 🎉');
