@@ -27,3 +27,9 @@
 /mobile/firebase-debug.log
 /mobile/firestore-debug.log
 /mobile/ui-debug.log
+
+# Scratch and QA screenshots
+/*_crop.png
+/button_icon.png
+/single_button.png
+/welcome_qa_badge.png
